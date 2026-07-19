@@ -66,6 +66,36 @@ function logout() {
     checkLogin();
 }
 
+const passwordModal = document.getElementById('password-modal');
+const passwordForm = document.getElementById('password-form');
+
+function showPasswordModal() {
+    passwordForm.reset();
+    passwordModal.classList.add('show');
+}
+
+function closePasswordModal() {
+    passwordModal.classList.remove('show');
+}
+
+function handlePasswordSubmit(event) {
+    event.preventDefault();
+    const oldPassword = document.getElementById('password-old').value.trim();
+    const newUsername = document.getElementById('password-new-username').value.trim();
+    const newPassword = document.getElementById('password-new').value.trim();
+    const confirmPassword = document.getElementById('password-confirm').value.trim();
+
+    if (newPassword !== confirmPassword) {
+        alert('两次输入的新密码不一致！');
+        return;
+    }
+
+    // 静态原型离线模拟成功
+    alert('密码修改成功！当前为静态演示环境，已更新模拟会话凭证，请重新登录。');
+    closePasswordModal();
+    logout();
+}
+
 // 标签页切换逻辑
 function switchTab(tabId) {
     // 1. 切换菜单激活状态

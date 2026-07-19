@@ -65,6 +65,9 @@ func main() {
 	} else {
 		log.Println("[SYSTEM] 运行模式: 独立服务器模式 (Standalone Mode)")
 		recordStore = store.NewMemoryStore(*dataPath)
+		if u, p := recordStore.GetCredentials(); u == "" || p == "" {
+			recordStore.SetCredentials(*webUser, *webPass)
+		}
 	}
 
 	// 3. 通用解析日志通道，用于实时日志流动
@@ -78,7 +81,8 @@ func main() {
 	if *syncMode {
 		go startSyncAgent(recordStore, *syncURL, *syncToken, *syncInterval)
 	} else {
-		webServer := web.NewWebServer(*webAddr, recordStore, logChan, *webUser, *webPass)
+		u, p := recordStore.GetCredentials()
+		webServer := web.NewWebServer(*webAddr, recordStore, logChan, u, p)
 		webServer.Start()
 	}
 

@@ -29,6 +29,22 @@ type MemoryStore struct {
 	filePath string
 	Domains  map[string]*DomainRecords `json:"domains"`
 	Tokens   map[string]string         `json:"tokens"` // key: token, value: subdomain.domain_isp
+	WebUser  string                    `json:"web_user,omitempty"`
+	WebPass  string                    `json:"web_pass,omitempty"`
+}
+
+func (s *MemoryStore) GetCredentials() (string, string) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.WebUser, s.WebPass
+}
+
+func (s *MemoryStore) SetCredentials(user, pass string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.WebUser = user
+	s.WebPass = pass
+	return s.saveUnlocked()
 }
 
 func NewMemoryStore(filePath string) *MemoryStore {

@@ -60,7 +60,11 @@
                     <span class="dot active"></span>
                     <span class="status-text">DNS 引擎已运行</span>
                 </div>
-                <button class="btn btn-text danger" style="padding: 4px 8px; margin-top: 8px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px;" onclick="logout()">
+                <button class="btn btn-text" style="padding: 4px 8px; margin-top: 8px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px; color: var(--text-muted);" onclick="showPasswordModal()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                    修改密码
+                </button>
+                <button class="btn btn-text danger" style="padding: 4px 8px; margin-top: 4px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px;" onclick="logout()">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin: 0;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
                     退出登录
                 </button>
@@ -344,6 +348,40 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
                         <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改密码模态弹窗 -->
+    <div class="modal-overlay" id="password-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>修改登录密码</h3>
+                <button class="modal-close" onclick="closePasswordModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="password-form" onsubmit="handlePasswordSubmit(event)">
+                    <div class="form-group">
+                        <label for="password-old">当前密码</label>
+                        <input type="password" id="password-old" required class="form-control" autocomplete="current-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="password-new-username">新用户名</label>
+                        <input type="text" id="password-new-username" value="admin" required class="form-control">
+                    </div>
+                    <div class="form-group">
+                        <label for="password-new">新密码</label>
+                        <input type="password" id="password-new" required class="form-control" autocomplete="new-password">
+                    </div>
+                    <div class="form-group">
+                        <label for="password-confirm">确认新密码</label>
+                        <input type="password" id="password-confirm" required class="form-control" autocomplete="new-password">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">取消</button>
+                        <button type="submit" class="btn btn-primary">保存修改</button>
                     </div>
                 </form>
             </div>

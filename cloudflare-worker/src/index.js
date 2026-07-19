@@ -17,9 +17,15 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
+    const getExpectedCredentials = async () => {
+      const store = await getStore();
+      const user = store.web_user || env.WEB_USER || "admin";
+      const pass = store.web_pass || env.WEB_PASS || "admin123";
+      return { user, pass };
+    };
+
     const getExpectedToken = async () => {
-      const user = env.WEB_USER || "admin";
-      const pass = env.WEB_PASS || "admin123";
+      const { user, pass } = await getExpectedCredentials();
       const msgBuffer = new TextEncoder().encode(user + ":" + pass);
       const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -75,8 +81,7 @@ export default {
       // API: 登录接口
       if (path === "/api/login" && request.method === "POST") {
         const body = await request.json();
-        const user = env.WEB_USER || "admin";
-        const pass = env.WEB_PASS || "admin123";
+        const { user, pass } = await getExpectedCredentials();
         if (body.username === user && body.password === pass) {
           const expectedToken = await getExpectedToken();
           return new Response(JSON.stringify({ status: "success", token: expectedToken }), {
@@ -85,6 +90,43 @@ export default {
         }
         return new Response(JSON.stringify({ error: "用户名或密码错误" }), {
           status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders }
+        });
+      }
+
+      // API: 修改管理员密码
+      if (path === "/api/admin/password" && request.method === "POST") {
+        if (!(await checkAdminAuth(request))) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        const body = await request.json();
+        const { old_password, new_username, new_password } = body;
+
+        const { pass } = await getExpectedCredentials();
+        if (old_password !== pass) {
+          return new Response(JSON.stringify({ error: "当前密码错误" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        if (!new_username || !new_password) {
+          return new Response(JSON.stringify({ error: "新用户名或新密码不能为空" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        const store = await getStore();
+        store.web_user = new_username;
+        store.web_pass = new_password;
+        await saveStore(store);
+
+        return new Response(JSON.stringify({ status: "success", message: "密码修改成功" }), {
           headers: { "Content-Type": "application/json", ...corsHeaders }
         });
       }
