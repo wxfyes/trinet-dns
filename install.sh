@@ -281,5 +281,9 @@ show_menu() {
     esac
 }
 
+# 通过 curl | bash 运行时，stdin 会被管道占用导致 read 无法等待用户输入。
+# 将 stdin 重定向至 /dev/tty 使脚本始终从真实终端读取输入。
+exec < /dev/tty
+
 # 首次执行直接拉起主菜单
 show_menu
