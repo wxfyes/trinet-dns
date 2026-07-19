@@ -24,3 +24,7 @@ cloudflare-worker/index.js
 .vscode/
 *.swp
 *.log
+
+# Plans
+commercialization_plan.md
+
