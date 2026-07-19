@@ -230,6 +230,90 @@ show_logs() {
     show_menu
 }
 
+install_agent() {
+    check_dependencies
+    detect_arch
+
+    echo -e "正在连接 GitHub 获取最新版本信息 (仓库: $GITHUB_REPO)..."
+    LATEST_TAG=$(curl -s "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    if [ -z "$LATEST_TAG" ]; then
+        echo -e "${RED}错误: 无法获取最新版本信息。${NC}"
+        read -p "按回车返回主菜单..."
+        show_menu; return
+    fi
+    echo -e "✓ 获取到最新版本: ${GREEN}$LATEST_TAG${NC}"
+
+    DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/download/$LATEST_TAG/$BINARY_NAME"
+
+    echo -e "\n${YELLOW}请输入主控服务器的 IP 地址或域名 (例如: 1.2.3.4):${NC}"
+    read -p "主控 IP/域名: " MASTER_HOST
+    if [ -z "$MASTER_HOST" ]; then
+        echo -e "${RED}错误: 主控地址不能为空！${NC}"
+        sleep 2; show_menu; return
+    fi
+
+    echo -e "请输入主控 Web 面板端口 (默认 18080，直接回车跳过):" 
+    read -p "主控端口 [18080]: " MASTER_PORT
+    MASTER_PORT="${MASTER_PORT:-18080}"
+
+    SYNC_URL="http://${MASTER_HOST}:${MASTER_PORT}/api/sync"
+    echo -e "✓ 同步地址已设置为: ${GREEN}$SYNC_URL${NC}"
+
+    mkdir -p $CONF_DIR
+
+    if systemctl is-active --quiet trinet-dns; then
+        echo "正在停止运行中的 TriNet DNS 服务以进行升级..."
+        systemctl stop trinet-dns
+    fi
+
+    echo -e "正在下载二进制主程序..."
+    wget -q --show-progress -O "$INSTALL_DIR/trinet-dns" "$DOWNLOAD_URL"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}错误: 主程序下载失败，请检查网络连接。${NC}"
+        read -p "按回车返回主菜单..."
+        show_menu; return
+    fi
+    chmod +x "$INSTALL_DIR/trinet-dns"
+    echo "$LATEST_TAG" > "$CONF_DIR/version"
+    echo -e "✓ 主程序安装成功"
+
+    echo -e "正在配置 Systemd 节点守护服务..."
+    cat << EOF > $SERVICE_FILE
+[Unit]
+Description=TriNet DNS Agent Node
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=$CONF_DIR
+ExecStart=$INSTALL_DIR/trinet-dns -dns-addr :53 -sync-mode -sync-url $SYNC_URL -sync-interval 15s
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable trinet-dns
+    systemctl restart trinet-dns
+    sleep 2
+
+    echo -e "\n${GREEN}====================================================${NC}"
+    echo -e "${GREEN}  🎉 TriNet DNS 节点 (Agent) 安装成功！          ${NC}"
+    echo -e "${GREEN}====================================================${NC}"
+    echo -e "🔹 启动状态: $(systemctl is-active trinet-dns)"
+    echo -e "🔹 同步主控: ${BLUE}$SYNC_URL${NC}"
+    echo -e "🔹 同步间隔: 15 秒"
+    echo -e "🔹 查看同步日志: journalctl -u trinet-dns -f | grep SYNC"
+    echo -e "${GREEN}====================================================${NC}"
+    echo -e "${YELLOW}请在主控面板确认解析记录已配置，节点将在 15 秒内自动同步。${NC}"
+    read -p "按回车返回主菜单..."
+    show_menu
+}
+
 show_menu() {
     clear
     echo -e "${BLUE}====================================================${NC}"
@@ -238,36 +322,40 @@ show_menu() {
     echo -e "当前版本: ${GREEN}$(cat $CONF_DIR/version 2>/dev/null || echo "未安装/未知")${NC}"
     echo -e "服务状态: ${GREEN}$(systemctl is-active trinet-dns 2>/dev/null || echo "未运行")${NC}"
     echo -e "${BLUE}----------------------------------------------------${NC}"
-    echo -e " 1. ${GREEN}安装 / 更新${NC} TriNet DNS"
-    echo -e " 2. ${RED}完全卸载${NC} TriNet DNS"
-    echo -e " 3. 启动 DNS 服务"
-    echo -e " 4. 停止 DNS 服务"
-    echo -e " 5. 重启 DNS 服务"
-    echo -e " 6. 查看服务运行状态"
-    echo -e " 7. 查看实时解析日志"
+    echo -e " 1. ${GREEN}安装 / 更新主控${NC} (独立模式 + Web 管理面板)"
+    echo -e " 2. ${GREEN}安装节点 Agent${NC} (同步模式，从主控同步解析记录)"
+    echo -e " 3. ${RED}完全卸载${NC} TriNet DNS"
+    echo -e " 4. 启动 DNS 服务"
+    echo -e " 5. 停止 DNS 服务"
+    echo -e " 6. 重启 DNS 服务"
+    echo -e " 7. 查看服务运行状态"
+    echo -e " 8. 查看实时解析日志"
     echo -e " 0. 退出面板"
     echo -e "${BLUE}====================================================${NC}"
-    read -p "请输入选项数字 [0-7]: " num
+    read -p "请输入选项数字 [0-8]: " num
     case "$num" in
         1)
             install_trinet
             ;;
         2)
-            uninstall_trinet
+            install_agent
             ;;
         3)
-            start_service
+            uninstall_trinet
             ;;
         4)
-            stop_service
+            start_service
             ;;
         5)
-            restart_service
+            stop_service
             ;;
         6)
-            show_status
+            restart_service
             ;;
         7)
+            show_status
+            ;;
+        8)
             show_logs
             ;;
         0)

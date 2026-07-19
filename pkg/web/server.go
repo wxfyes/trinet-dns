@@ -199,6 +199,20 @@ func (ws *WebServer) handleSysStats(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
+// handleSync 节点同步专用只读接口，不需要认证，仅返回 DNS 域名解析记录（不含账号/Token 等敏感信息）
+func (ws *WebServer) handleSync(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	data := ws.store.GetPublicData()
+	// 只返回 domains 部分，不暴露 tokens
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"domains": data.Domains,
+	})
+}
+
 func (ws *WebServer) Start() {
 	// API 路由
 	http.HandleFunc("/api/login", ws.handleLogin)
@@ -207,6 +221,9 @@ func (ws *WebServer) Start() {
 	http.HandleFunc("/api/ddns/update", ws.handleDDNSUpdate)
 	http.HandleFunc("/api/logs/stream", ws.handleLogStream)
 	http.HandleFunc("/api/sys/stats", ws.handleSysStats)
+	// 节点同步专用公开只读接口（仅返回 DNS 解析记录，不含账号密码）
+	http.HandleFunc("/api/sync", ws.handleSync)
+
 
 	// 静态文件服务器
 	subFS, err := fs.Sub(staticFS, "static")
