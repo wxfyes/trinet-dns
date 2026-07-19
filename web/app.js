@@ -1,3 +1,71 @@
+// 检查登录状态并切换界面
+function checkLogin() {
+    const token = localStorage.getItem('trinet_token');
+    const loginOverlay = document.getElementById('login-overlay');
+    const appContainer = document.getElementById('app-container');
+    if (token) {
+        loginOverlay.style.display = 'none';
+        appContainer.style.display = 'flex';
+        renderMockRecords();
+    } else {
+        loginOverlay.style.display = 'flex';
+        appContainer.style.display = 'none';
+    }
+}
+
+function renderMockRecords() {
+    const tbody = document.getElementById('records-list');
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr class="record-group-start">
+                <td class="font-mono">www</td>
+                <td class="font-mono">example.com</td>
+                <td><span class="badge badge-type">A</span></td>
+                <td><span class="isp-dot ct"></span>电信 (CT)</td>
+                <td class="font-mono">1.1.1.1</td>
+                <td class="font-mono">60</td>
+                <td>
+                    <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'ct', '1.1.1.1')">编辑</button>
+                    <button class="btn btn-text danger">删除</button>
+                </td>
+            </tr>
+            <tr class="record-group-end">
+                <td class="font-mono">www</td>
+                <td class="font-mono">example.com</td>
+                <td><span class="badge badge-type">A</span></td>
+                <td><span class="isp-dot cu"></span>联通 (CU)</td>
+                <td class="font-mono">2.2.2.2</td>
+                <td class="font-mono">60</td>
+                <td>
+                    <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'cu', '2.2.2.2')">编辑</button>
+                    <button class="btn btn-text danger">删除</button>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// 提交登录表单
+function handleLoginSubmit(event) {
+    event.preventDefault();
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+
+    // 静态演示环境：离线校验 admin / admin123
+    if (username === 'admin' && password === 'admin123') {
+        localStorage.setItem('trinet_token', 'mock_token_123456');
+        checkLogin();
+    } else {
+        alert('用户名或密码错误！默认账户为 admin，密码为 admin123');
+    }
+}
+
+// 退出登录
+function logout() {
+    localStorage.removeItem('trinet_token');
+    checkLogin();
+}
+
 // 标签页切换逻辑
 function switchTab(tabId) {
     // 1. 切换菜单激活状态
@@ -34,6 +102,11 @@ function switchTab(tabId) {
 const modalOverlay = document.getElementById('record-modal');
 const modalTitle = document.getElementById('modal-title');
 const recordForm = document.getElementById('record-form');
+
+// 页面加载入口
+window.addEventListener('DOMContentLoaded', () => {
+    checkLogin();
+});
 
 function showAddModal() {
     modalTitle.innerText = '添加域名解析';

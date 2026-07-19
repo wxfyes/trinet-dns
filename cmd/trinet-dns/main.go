@@ -23,6 +23,10 @@ func main() {
 	webAddr := flag.String("web-addr", ":80", "Web 后台/API 服务监听地址")
 	dataPath := flag.String("data-path", "trinet-records.json", "解析数据持久化 JSON 文件路径")
 	
+	// Web 后台用户名与密码
+	webUser := flag.String("web-user", "admin", "Web 管理面板登录用户名")
+	webPass := flag.String("web-pass", "admin123", "Web 管理面板登录密码")
+
 	// 节点同步模式参数
 	syncMode := flag.Bool("sync-mode", false, "启用节点同步模式（仅作为解析节点，从控制端 API 同步记录）")
 	syncURL := flag.String("sync-url", "", "控制端 API 数据同步地址 (如 https://trinet-api.workers.dev/api/records)")
@@ -30,6 +34,14 @@ func main() {
 	syncInterval := flag.Duration("sync-interval", 15*time.Second, "数据同步拉取时间间隔")
 
 	flag.Parse()
+
+	// 支持环境变量覆盖命令行参数，便于容器/Systemd部署
+	if envUser := os.Getenv("TRINET_WEB_USER"); envUser != "" {
+		*webUser = envUser
+	}
+	if envPass := os.Getenv("TRINET_WEB_PASS"); envPass != "" {
+		*webPass = envPass
+	}
 
 	log.Println("[SYSTEM] TriNet DNS (三网智能解析) 系统正在初始化...")
 
@@ -66,7 +78,7 @@ func main() {
 	if *syncMode {
 		go startSyncAgent(recordStore, *syncURL, *syncToken, *syncInterval)
 	} else {
-		webServer := web.NewWebServer(*webAddr, recordStore, logChan)
+		webServer := web.NewWebServer(*webAddr, recordStore, logChan, *webUser, *webPass)
 		webServer.Start()
 	}
 

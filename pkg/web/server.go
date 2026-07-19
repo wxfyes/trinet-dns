@@ -1,7 +1,9 @@
 package web
 
 import (
+	"crypto/sha256"
 	"embed"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -22,21 +24,73 @@ type WebServer struct {
 	logChan   chan string
 	clients   map[chan string]bool
 	clientsMu sync.RWMutex
+	username  string
+	password  string
+	authToken string
 }
 
-func NewWebServer(addr string, s *store.MemoryStore, logChan chan string) *WebServer {
+func NewWebServer(addr string, s *store.MemoryStore, logChan chan string, username, password string) *WebServer {
+	h := sha256.New()
+	h.Write([]byte(username + ":" + password))
+	token := hex.EncodeToString(h.Sum(nil))
+
 	ws := &WebServer{
-		addr:    addr,
-		store:   s,
-		logChan: logChan,
-		clients: make(map[chan string]bool),
+		addr:      addr,
+		store:     s,
+		logChan:   logChan,
+		clients:   make(map[chan string]bool),
+		username:  username,
+		password:  password,
+		authToken: token,
 	}
 	go ws.logBroadcaster()
 	return ws
 }
 
+func (ws *WebServer) checkAuth(w http.ResponseWriter, r *http.Request) bool {
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if token == "" {
+		token = r.URL.Query().Get("token")
+	}
+	if token != ws.authToken {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(`{"error":"未授权"}`))
+		return false
+	}
+	return true
+}
+
+func (ws *WebServer) handleLogin(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte(`{"error":"Method Not Allowed"}`))
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"参数格式错误"}`))
+		return
+	}
+
+	if req.Username == ws.username && req.Password == ws.password {
+		w.Write([]byte(fmt.Sprintf(`{"status":"success","token":"%s"}`, ws.authToken)))
+		return
+	}
+
+	w.WriteHeader(http.StatusUnauthorized)
+	w.Write([]byte(`{"error":"用户名或密码错误"}`))
+}
+
 func (ws *WebServer) Start() {
 	// API 路由
+	http.HandleFunc("/api/login", ws.handleLogin)
 	http.HandleFunc("/api/records", ws.handleRecords)
 	http.HandleFunc("/api/ddns/update", ws.handleDDNSUpdate)
 	http.HandleFunc("/api/logs/stream", ws.handleLogStream)
@@ -73,6 +127,9 @@ func (ws *WebServer) logBroadcaster() {
 
 // handleRecords 提供 DNS 记录的增删改查
 func (ws *WebServer) handleRecords(w http.ResponseWriter, r *http.Request) {
+	if !ws.checkAuth(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 
 	switch r.Method {
@@ -168,6 +225,9 @@ func (ws *WebServer) handleDDNSUpdate(w http.ResponseWriter, r *http.Request) {
 
 // handleLogStream SSE 实时推流接口
 func (ws *WebServer) handleLogStream(w http.ResponseWriter, r *http.Request) {
+	if !ws.checkAuth(w, r) {
+		return
+	}
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")

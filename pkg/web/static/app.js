@@ -1,3 +1,73 @@
+// API 请求统一封装，自动注入 Authorization Token 并处理 401 未授权
+async function fetchAPI(url, options = {}) {
+    const token = localStorage.getItem('trinet_token');
+    if (!options.headers) {
+        options.headers = {};
+    }
+    if (token) {
+        options.headers['Authorization'] = 'Bearer ' + token;
+    }
+    
+    const res = await fetch(url, options);
+    if (res.status === 401) {
+        logout();
+        throw new Error('登录会话已过期，请重新登录');
+    }
+    return res;
+}
+
+// 检查登录状态并切换界面
+function checkLogin() {
+    const token = localStorage.getItem('trinet_token');
+    const loginOverlay = document.getElementById('login-overlay');
+    const appContainer = document.getElementById('app-container');
+    if (token) {
+        loginOverlay.style.display = 'none';
+        appContainer.style.display = 'flex';
+        loadRecords();
+        setupLogStream();
+    } else {
+        loginOverlay.style.display = 'flex';
+        appContainer.style.display = 'none';
+        if (logSource) {
+            logSource.close();
+            logSource = null;
+        }
+    }
+}
+
+// 提交登录表单
+async function handleLoginSubmit(event) {
+    event.preventDefault();
+    const username = document.getElementById('login-username').value.trim();
+    const password = document.getElementById('login-password').value.trim();
+
+    try {
+        const res = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('trinet_token', data.token);
+            checkLogin();
+        } else {
+            const data = await res.json();
+            alert(data.error || '登录失败，请检查用户名和密码');
+        }
+    } catch (err) {
+        alert('登录失败，无法连接到服务器');
+    }
+}
+
+// 退出登录
+function logout() {
+    localStorage.removeItem('trinet_token');
+    checkLogin();
+}
+
 // 标签页切换逻辑
 function switchTab(tabId) {
     // 1. 切换菜单激活状态
@@ -81,7 +151,7 @@ let globalData = { domains: {}, tokens: {} };
 // 从 API 加载解析记录并更新页面
 async function loadRecords() {
     try {
-        const res = await fetch('/api/records');
+        const res = await fetchAPI('/api/records');
         if (!res.ok) throw new Error('无法连接到 API');
         globalData = await res.json();
         
@@ -241,7 +311,7 @@ async function saveRecord(event) {
     };
 
     try {
-        const res = await fetch('/api/records', {
+        const res = await fetchAPI('/api/records', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -267,7 +337,7 @@ async function deleteRecord(subdomain, domain, type, isp) {
 
     try {
         const url = `/api/records?domain=${encodeURIComponent(domain)}&subdomain=${encodeURIComponent(subdomain)}&type=${encodeURIComponent(type)}&isp=${encodeURIComponent(isp)}`;
-        const res = await fetch(url, { method: 'DELETE' });
+        const res = await fetchAPI(url, { method: 'DELETE' });
         if (res.ok) {
             loadRecords();
         } else {
@@ -303,14 +373,21 @@ function updateDashboardStats(data) {
     }
 }
 
+let logSource = null;
+
 // 日志处理与 SSE (Server-Sent Events) 实对日志推流
 function setupLogStream() {
     const logContainer = document.getElementById('log-container');
     if (!logContainer) return;
 
-    const source = new EventSource('/api/logs/stream');
+    if (logSource) {
+        logSource.close();
+    }
 
-    source.onmessage = function(event) {
+    const token = localStorage.getItem('trinet_token');
+    logSource = new EventSource('/api/logs/stream?token=' + encodeURIComponent(token || ''));
+
+    logSource.onmessage = function(event) {
         const msg = event.data;
         const div = document.createElement('div');
         
@@ -341,7 +418,7 @@ function setupLogStream() {
         }
     };
 
-    source.onerror = function() {
+    logSource.onerror = function() {
         console.log('SSE 连接断开，尝试重连...');
     };
 }
@@ -364,6 +441,5 @@ function clearLogs() {
 
 // 页面加载入口
 window.addEventListener('DOMContentLoaded', () => {
-    loadRecords();
-    setupLogStream();
+    checkLogin();
 });

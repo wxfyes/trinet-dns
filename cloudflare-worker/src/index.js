@@ -17,6 +17,27 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
+    const getExpectedToken = async () => {
+      const user = env.WEB_USER || "admin";
+      const pass = env.WEB_PASS || "admin123";
+      const msgBuffer = new TextEncoder().encode(user + ":" + pass);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+    };
+
+    const checkAdminAuth = async (req) => {
+      let token = req.headers.get("Authorization");
+      if (token && token.startsWith("Bearer ")) {
+        token = token.substring(7);
+      } else {
+        const u = new URL(req.url);
+        token = u.searchParams.get("token");
+      }
+      const expected = await getExpectedToken();
+      return token === expected;
+    };
+
     // 1. 获取本地 KV 缓存数据，不存在则自动初始化默认数据
     const getStore = async () => {
       const data = await env.TRINET_DNS_KV.get("trinet_store");
@@ -51,8 +72,31 @@ export default {
 
     // 2. 路由处理
     try {
+      // API: 登录接口
+      if (path === "/api/login" && request.method === "POST") {
+        const body = await request.json();
+        const user = env.WEB_USER || "admin";
+        const pass = env.WEB_PASS || "admin123";
+        if (body.username === user && body.password === pass) {
+          const expectedToken = await getExpectedToken();
+          return new Response(JSON.stringify({ status: "success", token: expectedToken }), {
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+        return new Response(JSON.stringify({ error: "用户名或密码错误" }), {
+          status: 401,
+          headers: { "Content-Type": "application/json", ...corsHeaders }
+        });
+      }
+
       // API: 获取所有解析记录
       if (path === "/api/records" && request.method === "GET") {
+        if (!(await checkAdminAuth(request))) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
         const store = await getStore();
         return new Response(JSON.stringify(store), {
           headers: { "Content-Type": "application/json", ...corsHeaders }
@@ -61,6 +105,12 @@ export default {
 
       // API: 添加或修改解析记录
       if (path === "/api/records" && request.method === "POST") {
+        if (!(await checkAdminAuth(request))) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
         const store = await getStore();
         const body = await request.json();
         const { domain, subdomain, type, isp, values, ttl } = body;
@@ -99,6 +149,12 @@ export default {
 
       // API: 删除解析记录
       if (path === "/api/records" && request.method === "DELETE") {
+        if (!(await checkAdminAuth(request))) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
         const store = await getStore();
         const body = await request.json();
         const { domain, subdomain, type, isp } = body;
@@ -212,6 +268,12 @@ export default {
 
       // API: DDNS Token 管理列表
       if (path === "/api/ddns/tokens" && request.method === "GET") {
+        if (!(await checkAdminAuth(request))) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
         const store = await getStore();
         return new Response(JSON.stringify(store.tokens || {}), {
           headers: { "Content-Type": "application/json", ...corsHeaders }
@@ -220,6 +282,12 @@ export default {
 
       // API: 创建 DDNS Token
       if (path === "/api/ddns/tokens" && request.method === "POST") {
+        if (!(await checkAdminAuth(request))) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
         const store = await getStore();
         const body = await request.json();
         const { token, binding } = body;
@@ -244,6 +312,12 @@ export default {
 
       // API: 删除 DDNS Token
       if (path === "/api/ddns/tokens" && request.method === "DELETE") {
+        if (!(await checkAdminAuth(request))) {
+          return new Response(JSON.stringify({ error: "Unauthorized" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
         const store = await getStore();
         const body = await request.json();
         const { token } = body;

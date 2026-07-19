@@ -10,7 +10,27 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
+    <!-- 登录遮罩层 -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-box">
+            <span class="login-logo">🦅</span>
+            <h2>TriNet DNS</h2>
+            <p>三网智能解析控制台</p>
+            <form id="login-form" onsubmit="handleLoginSubmit(event)">
+                <div class="form-group">
+                    <label for="login-username">用户名</label>
+                    <input type="text" id="login-username" required class="form-control" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="login-password">密码</label>
+                    <input type="password" id="login-password" required class="form-control" autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary">登 录</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="app-container" id="app-container" style="display: none;">
         <!-- 侧边导航栏 -->
         <aside class="sidebar">
             <div class="brand">
@@ -40,6 +60,10 @@
                     <span class="dot active"></span>
                     <span class="status-text">DNS 引擎已运行</span>
                 </div>
+                <button class="btn btn-text danger" style="padding: 4px 8px; margin-top: 8px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px;" onclick="logout()">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin: 0;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+                    退出登录
+                </button>
             </div>
         </aside>
 

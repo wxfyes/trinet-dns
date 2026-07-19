@@ -659,3 +659,91 @@ label {
     gap: 12px;
     margin-top: 24px;
 }
+
+/* 登录界面样式 */
+.login-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at top right, #1e293b, #0f172a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.login-box {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    text-align: center;
+}
+
+.login-box h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #ffffff;
+    margin-bottom: 8px;
+    letter-spacing: -0.02em;
+}
+
+.login-box p {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    margin-bottom: 32px;
+}
+
+.login-box label {
+    text-align: left;
+    color: #cbd5e1;
+}
+
+.login-box .form-control {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.login-box .form-control:focus {
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.login-box .btn-primary {
+    background: #38bdf8;
+    color: #0f172a;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    width: 100%;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.login-box .btn-primary:hover {
+    background: #0ea5e9;
+    transform: translateY(-1px);
+}
+
+.login-box .btn-primary:active {
+    transform: translateY(0);
+}
+
+.login-box .login-logo {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    display: inline-block;
+}
