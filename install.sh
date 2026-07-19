@@ -77,6 +77,11 @@ DOWNLOAD_URL="https://github.com/$GITHUB_REPO/releases/download/$LATEST_TAG/$BIN
 # 5. 创建配置文件夹并下载二进制文件
 mkdir -p $CONF_DIR
 
+if systemctl is-active --quiet trinet-dns; then
+    echo "正在停止运行中的 TriNet DNS 服务以进行升级..."
+    systemctl stop trinet-dns
+fi
+
 echo -e "正在下载二进制主程序..."
 wget -q --show-progress -O "$INSTALL_DIR/trinet-dns" "$DOWNLOAD_URL"
 if [ $? -ne 0 ]; then
