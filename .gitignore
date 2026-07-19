@@ -1,8 +1,8 @@
-# Binaries
-trinet-dns
+# Binaries (Root only)
+/trinet-dns
+/tianque-dns
 trinet-dns.exe
 tianque-dns.exe
-tianque-dns
 build/
 
 # Local databases and states
