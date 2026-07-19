@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TriNet DNS - 三网智能解析控制台</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边导航栏 -->
+        <aside class="sidebar">
+            <div class="brand">
+                <span class="logo-icon">🦅</span>
+                <span class="logo-text">TriNet DNS</span>
+            </div>
+            <nav class="menu">
+                <a href="#dashboard" class="menu-item active" onclick="switchTab('dashboard')">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    控制台
+                </a>
+                <a href="#records" class="menu-item" onclick="switchTab('records')">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>
+                    解析记录
+                </a>
+                <a href="#ddns" class="menu-item" onclick="switchTab('ddns')">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6m12-4a9 9 0 0 1-15 6.7L3 16"></path></svg>
+                    动态 DNS
+                </a>
+                <a href="#logs" class="menu-item" onclick="switchTab('logs')">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    系统日志
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator">
+                    <span class="dot active"></span>
+                    <span class="status-text">DNS 引擎已运行</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 主内容区域 -->
+        <main class="main-content">
+            <!-- 顶部栏 -->
+            <header class="top-bar">
+                <h1 id="page-title">控制台</h1>
+                <div class="user-profile">
+                    <span class="server-ip">本机 IP: 218.85.118.88</span>
+                </div>
+            </header>
+
+            <!-- 视窗容器 -->
+            <div class="content-viewport">
+                <!-- 控制台面板 -->
+                <section id="tab-dashboard" class="tab-pane active">
+                    <!-- 状态卡片网格 -->
+                    <div class="card-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">今日请求总量</span>
+                                <span class="trend positive">↑ 12.3%</span>
+                            </div>
+                            <div class="card-value">1,248,392</div>
+                            <div class="card-desc">平均解析响应: 1.2 ms</div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">当前解析域名</span>
+                            </div>
+                            <div class="card-value">0</div>
+                            <div class="card-desc">活动三网线路: 0 条</div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">系统运行时间</span>
+                            </div>
+                            <div class="card-value">已运行</div>
+                            <div class="card-desc">CPU 占用: 0.1% | 内存: 8MB</div>
+                        </div>
+                    </div>
+
+                    <!-- 三网流量看板 -->
+                    <div class="section-container">
+                        <h2 class="section-title">三网解析流量分布</h2>
+                        <div class="traffic-bars">
+                            <div class="traffic-bar-item">
+                                <div class="bar-info">
+                                    <span class="isp-badge ct">中国电信 (China Telecom)</span>
+                                    <span class="bar-value">43.4%</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div class="progress-fill ct-fill" style="width: 43.4%"></div>
+                                </div>
+                            </div>
+                            <div class="traffic-bar-item">
+                                <div class="bar-info">
+                                    <span class="isp-badge cu">中国联通 (China Unicom)</span>
+                                    <span class="bar-value">31.2%</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div class="progress-fill cu-fill" style="width: 31.2%"></div>
+                                </div>
+                            </div>
+                            <div class="traffic-bar-item">
+                                <div class="bar-info">
+                                    <span class="isp-badge cm">中国移动 (China Mobile)</span>
+                                    <span class="bar-value">22.4%</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div class="progress-fill cm-fill" style="width: 22.4%"></div>
+                                </div>
+                            </div>
+                            <div class="traffic-bar-item">
+                                <div class="bar-info">
+                                    <span class="isp-badge def">其他线路 (Default/Others)</span>
+                                    <span class="bar-value">3.0%</span>
+                                </div>
+                                <div class="progress-track">
+                                    <div class="progress-fill def-fill" style="width: 3.0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 解析记录面板 -->
+                <section id="tab-records" class="tab-pane">
+                    <div class="table-actions">
+                        <button class="btn btn-primary" onclick="showAddModal()">+ 添加域名解析</button>
+                        <div class="search-wrapper">
+                            <input type="text" placeholder="搜索域名或 IP..." class="input-search" id="record-search">
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>主机记录</th>
+                                    <th>域名</th>
+                                    <th>类型</th>
+                                    <th>线路</th>
+                                    <th>记录值 (IP / 目标)</th>
+                                    <th>TTL</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="records-list">
+                                <!-- 由 app.js 动态渲染 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- 动态 DNS 面板 -->
+                <section id="tab-ddns" class="tab-pane">
+                    <div class="section-container">
+                        <div class="ddns-header">
+                            <h2>DDNS 客户端配置与密钥</h2>
+                            <button class="btn btn-primary" onclick="generateToken()">+ 生成新 Token</button>
+                        </div>
+                        <p class="section-desc">您可以使用本系统的 DDNS API 接口，通过客户端（如 RouterOS、OpenWrt 或 curl 脚本）实时上报动态 IP，系统会自动更新对应线路的记录值。</p>
+                        
+                        <div class="table-container margin-top">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>主机/域名</th>
+                                        <th>对应线路</th>
+                                        <th>Token</th>
+                                        <th>最后更新时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- 由 app.js 动态渲染 -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <h3 class="margin-top">客户端更新示例 (Shell Curl)</h3>
+                        <div class="code-block">
+                            <code>curl -X POST "http://[本站域名或IP]/api/ddns/update" \
+  -H "Authorization: Bearer ddns_tok_demo123456" \
+  -d "ip=218.85.118.88"</code>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 系统日志面板 -->
+                <section id="tab-logs" class="tab-pane">
+                    <div class="section-container">
+                        <div class="log-actions">
+                            <h3>解析与引擎日志</h3>
+                            <button class="btn btn-secondary" onclick="clearLogs()">清除日志</button>
+                        </div>
+                        <div class="log-viewport" id="log-container">
+                            <!-- 实时推流展示 -->
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- 添加/编辑记录模态弹窗 -->
+    <div class="modal-overlay" id="record-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modal-title">添加域名解析</h3>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="record-form" onsubmit="saveRecord(event)">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="input-subdomain">主机记录</label>
+                            <input type="text" id="input-subdomain" placeholder="例如: www" required class="form-control font-mono">
+                        </div>
+                        <div class="form-group">
+                            <label for="input-domain">域名</label>
+                            <input type="text" id="input-domain" value="example.com" required class="form-control font-mono">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="select-type">记录类型</label>
+                            <select id="select-type" class="form-control">
+                                <option value="A">A (IPv4)</option>
+                                <option value="AAAA">AAAA (IPv6)</option>
+                                <option value="CNAME">CNAME (别名)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="select-isp">解析线路</label>
+                            <select id="select-isp" class="form-control">
+                                <option value="def">默认 (Default)</option>
+                                <option value="ct">中国电信 (CT)</option>
+                                <option value="cu">中国联通 (CU)</option>
+                                <option value="cm">中国移动 (CM)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="input-value">记录值 (IP 或 目标域名)</label>
+                        <input type="text" id="input-value" placeholder="例如: 1.1.1.1" required class="form-control font-mono">
+                    </div>
+                    <div class="form-group">
+                        <label for="input-ttl">TTL (秒)</label>
+                        <input type="number" id="input-ttl" value="60" required class="form-control font-mono">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

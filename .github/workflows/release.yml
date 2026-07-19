@@ -1,0 +1,85 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*' # 当推送形如 v1.0.0 的 tag 时触发自动编译发布
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Multi-Platform Binary
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            artifact_name: trinet-dns-linux-amd64
+          - goos: linux
+            goarch: arm64
+            artifact_name: trinet-dns-linux-arm64
+          - goos: windows
+            goarch: amd64
+            artifact_name: trinet-dns-windows-amd64.exe
+          - goos: darwin
+            goarch: amd64
+            artifact_name: trinet-dns-darwin-amd64
+          - goos: darwin
+            goarch: arm64
+            artifact_name: trinet-dns-darwin-arm64
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+          cache: true
+
+      - name: Go Mod Tidy
+        run: go mod tidy
+
+      - name: Build Binary
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          go build -ldflags="-s -w" -o build/${{ matrix.artifact_name }} ./cmd/trinet-dns
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: build/${{ matrix.artifact_name }}
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: build-artifacts
+
+      - name: Prepare Release Assets
+        run: |
+          mkdir -p release-assets
+          find build-artifacts/ -type f -exec cp {} release-assets/ \;
+          ls -lh release-assets/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release-assets/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

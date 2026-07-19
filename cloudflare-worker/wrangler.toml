@@ -1,0 +1,8 @@
+name = "trinet-dns-worker"
+main = "index.js"
+compatibility_date = "2026-07-20"
+
+# 绑定 KV 命名空间来存储 DNS 解析记录
+kv_namespaces = [
+    { binding = "TRINET_DNS_KV", id = "trinet_dns_kv_placeholder" }
+]

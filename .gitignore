@@ -1,0 +1,26 @@
+# Binaries
+trinet-dns
+trinet-dns.exe
+tianque-dns.exe
+tianque-dns
+build/
+
+# Local databases and states
+trinet-records.json
+tianque-records.json
+geoip_rules.txt
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Node.js
+node_modules/
+.wrangler/
+cloudflare-worker/index.js
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.log
