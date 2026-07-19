@@ -281,9 +281,17 @@ show_menu() {
     esac
 }
 
-# 通过 curl | bash 运行时，stdin 会被管道占用导致 read 无法等待用户输入。
-# 将 stdin 重定向至 /dev/tty 使脚本始终从真实终端读取输入。
-exec < /dev/tty
+# 检测是否通过管道 (curl | bash) 运行，如果是则重新绑定 stdin 到终端
+if [ ! -t 0 ]; then
+    # stdin 不是终端，尝试重新绑定
+    if [ -e /dev/tty ]; then
+        exec < /dev/tty
+    else
+        echo -e "${RED}错误: 请使用以下方式运行脚本（不要用管道）:${NC}"
+        echo -e "${YELLOW}bash <(curl -fsSL https://raw.githubusercontent.com/wxfyes/trinet-dns/main/install.sh)${NC}"
+        exit 1
+    fi
+fi
 
 # 首次执行直接拉起主菜单
 show_menu
