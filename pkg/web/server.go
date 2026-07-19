@@ -187,10 +187,14 @@ func (ws *WebServer) handleSysStats(w http.ResponseWriter, r *http.Request) {
 
 	cpuUsage := 0.1 + (0.2 * float64(time.Now().Unix()%5))
 
+	totalQueries, ispStats := ws.store.GetQueryStats()
+
 	stats := map[string]interface{}{
-		"uptime": uptime,
-		"memory": fmt.Sprintf("%.2f MB", memMB),
-		"cpu":    fmt.Sprintf("%.1f%%", cpuUsage),
+		"uptime":      uptime,
+		"memory":      fmt.Sprintf("%.2f MB", memMB),
+		"cpu":         fmt.Sprintf("%.1f%%", cpuUsage),
+		"query_count": totalQueries,
+		"isp_stats":   ispStats,
 	}
 	json.NewEncoder(w).Encode(stats)
 }

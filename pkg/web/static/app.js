@@ -429,6 +429,7 @@ async function loadSysStats() {
         if (!res.ok) return;
         const stats = await res.json();
         
+        // 1. 系统负载
         const cards = document.querySelectorAll('.card-value');
         if (cards.length >= 3) {
             cards[2].textContent = stats.uptime;
@@ -436,6 +437,39 @@ async function loadSysStats() {
             if (desc) {
                 desc.textContent = `CPU 占用: ${stats.cpu} | 内存: ${stats.memory}`;
             }
+        }
+
+        // 2. 今日请求总量
+        const queryCountEl = document.getElementById('stat-query-count');
+        if (queryCountEl && stats.query_count !== undefined) {
+            queryCountEl.textContent = stats.query_count.toLocaleString();
+            queryCounter = stats.query_count; // 同步当前本地计数
+        }
+
+        // 3. 三网解析流量分布比例
+        if (stats.isp_stats) {
+            const total = stats.query_count || 0;
+            const ct = stats.isp_stats.ct || 0;
+            const cu = stats.isp_stats.cu || 0;
+            const cm = stats.isp_stats.cm || 0;
+            const def = stats.isp_stats.def || 0;
+
+            const ctPct = total > 0 ? ((ct / total) * 100).toFixed(1) : '0.0';
+            const cuPct = total > 0 ? ((cu / total) * 100).toFixed(1) : '0.0';
+            const cmPct = total > 0 ? ((cm / total) * 100).toFixed(1) : '0.0';
+            const defPct = total > 0 ? ((def / total) * 100).toFixed(1) : '0.0';
+
+            const updateISPBar = (isp, pct) => {
+                const valEl = document.getElementById(`stat-bar-val-${isp}`);
+                const fillEl = document.getElementById(`stat-bar-fill-${isp}`);
+                if (valEl) valEl.textContent = `${pct}%`;
+                if (fillEl) fillEl.style.width = `${pct}%`;
+            };
+
+            updateISPBar('ct', ctPct);
+            updateISPBar('cu', cuPct);
+            updateISPBar('cm', cmPct);
+            updateISPBar('def', defPct);
         }
     } catch (err) {
         console.error('获取系统状态失败:', err);
@@ -501,9 +535,9 @@ function setupLogStream() {
     };
 }
 
-let queryCounter = 1248392; // 基础值
+let queryCounter = 0; // 基础值，随 API 数据同步
 function incrementQueryCount() {
-    const valueEl = document.querySelector('.card-value');
+    const valueEl = document.getElementById('stat-query-count');
     if (valueEl) {
         queryCounter++;
         valueEl.textContent = queryCounter.toLocaleString();

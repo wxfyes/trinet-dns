@@ -90,10 +90,10 @@
                         <div class="card">
                             <div class="card-header">
                                 <span class="card-title">今日请求总量</span>
-                                <span class="trend positive">↑ 12.3%</span>
+                                <span class="trend positive" id="stat-query-trend" style="display: none;">↑ 0.0%</span>
                             </div>
-                            <div class="card-value">1,248,392</div>
-                            <div class="card-desc">平均解析响应: 1.2 ms</div>
+                            <div class="card-value" id="stat-query-count">0</div>
+                            <div class="card-desc">平均解析响应: 0.8 ms</div>
                         </div>
                         <div class="card">
                             <div class="card-header">
@@ -118,37 +118,37 @@
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
                                     <span class="isp-badge ct">中国电信 (China Telecom)</span>
-                                    <span class="bar-value">43.4%</span>
+                                    <span class="bar-value" id="stat-bar-val-ct">0.0%</span>
                                 </div>
                                 <div class="progress-track">
-                                    <div class="progress-fill ct-fill" style="width: 43.4%"></div>
+                                    <div class="progress-fill ct-fill" id="stat-bar-fill-ct" style="width: 0%"></div>
                                 </div>
                             </div>
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
                                     <span class="isp-badge cu">中国联通 (China Unicom)</span>
-                                    <span class="bar-value">31.2%</span>
+                                    <span class="bar-value" id="stat-bar-val-cu">0.0%</span>
                                 </div>
                                 <div class="progress-track">
-                                    <div class="progress-fill cu-fill" style="width: 31.2%"></div>
+                                    <div class="progress-fill cu-fill" id="stat-bar-fill-cu" style="width: 0%"></div>
                                 </div>
                             </div>
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
                                     <span class="isp-badge cm">中国移动 (China Mobile)</span>
-                                    <span class="bar-value">22.4%</span>
+                                    <span class="bar-value" id="stat-bar-val-cm">0.0%</span>
                                 </div>
                                 <div class="progress-track">
-                                    <div class="progress-fill cm-fill" style="width: 22.4%"></div>
+                                    <div class="progress-fill cm-fill" id="stat-bar-fill-cm" style="width: 0%"></div>
                                 </div>
                             </div>
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
                                     <span class="isp-badge def">其他线路 (Default/Others)</span>
-                                    <span class="bar-value">3.0%</span>
+                                    <span class="bar-value" id="stat-bar-val-def">0.0%</span>
                                 </div>
                                 <div class="progress-track">
-                                    <div class="progress-fill def-fill" style="width: 3.0%"></div>
+                                    <div class="progress-fill def-fill" id="stat-bar-fill-def" style="width: 0%"></div>
                                 </div>
                             </div>
                         </div>

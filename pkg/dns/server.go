@@ -64,6 +64,7 @@ func (d *DNSServer) handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
 	if clientIP != nil {
 		isp = d.route.Lookup(clientIP)
 	}
+	d.store.RecordQuery(isp)
 
 	// 2. 切分域名和主机记录
 	subdomain, domain := d.splitQName(q.Name)

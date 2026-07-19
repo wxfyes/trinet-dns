@@ -31,6 +31,9 @@ type MemoryStore struct {
 	Tokens   map[string]string         `json:"tokens"` // key: token, value: subdomain.domain_isp
 	WebUser  string                    `json:"web_user,omitempty"`
 	WebPass  string                    `json:"web_pass,omitempty"`
+	// 以下为运行时统计数据，不参与 JSON 持久化序列化
+	queryCount  uint64
+	ispQueryMap map[string]uint64
 }
 
 func (s *MemoryStore) GetCredentials() (string, string) {
@@ -49,12 +52,35 @@ func (s *MemoryStore) SetCredentials(user, pass string) error {
 
 func NewMemoryStore(filePath string) *MemoryStore {
 	store := &MemoryStore{
-		filePath: filePath,
-		Domains:  make(map[string]*DomainRecords),
-		Tokens:   make(map[string]string),
+		filePath:    filePath,
+		Domains:     make(map[string]*DomainRecords),
+		Tokens:      make(map[string]string),
+		ispQueryMap: make(map[string]uint64),
 	}
 	store.Load()
 	return store
+}
+
+// RecordQuery 记录一次解析查询
+func (s *MemoryStore) RecordQuery(isp string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.queryCount++
+	if s.ispQueryMap == nil {
+		s.ispQueryMap = make(map[string]uint64)
+	}
+	s.ispQueryMap[isp]++
+}
+
+// GetQueryStats 获取当前解析查询统计数据
+func (s *MemoryStore) GetQueryStats() (uint64, map[string]uint64) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	m := make(map[string]uint64)
+	for k, v := range s.ispQueryMap {
+		m[k] = v
+	}
+	return s.queryCount, m
 }
 
 // Load 从 JSON 文件加载数据
