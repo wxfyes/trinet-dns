@@ -5,7 +5,7 @@
 # ==============================================================================
 
 # 默认 GitHub 仓库路径 (您可以运行脚本时通过传参覆盖，如 ./install.sh your_name/your_repo)
-DEFAULT_REPO="nasstoki/trinet-dns"
+DEFAULT_REPO="wxfyes/trinet-dns"
 GITHUB_REPO="${1:-$DEFAULT_REPO}"
 
 INSTALL_DIR="/usr/local/bin"
