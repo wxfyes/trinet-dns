@@ -93,7 +93,8 @@ func (d *DNSServer) handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
 		logMsg = "[QUERY] IP: " + clientIP.String() + " -> 查询非托管域名: " + q.Name
 	}
 
-	// 发送解析日志到 Web 后台展示
+	// 发送解析日志到 Web 后台展示，同时输出到系统控制台
+	log.Println(logMsg)
 	select {
 	case d.logChan <- logMsg:
 	default:
