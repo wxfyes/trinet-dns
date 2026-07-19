@@ -89,17 +89,19 @@ func (s *MemoryStore) saveUnlocked() error {
 	return os.WriteFile(s.filePath, data, 0644)
 }
 
-// MarshalJSON 实现自定义 thread-safe 序列化
-func (s *MemoryStore) MarshalJSON() ([]byte, error) {
+type PublicStoreData struct {
+	Domains map[string]*DomainRecords `json:"domains"`
+	Tokens  map[string]string         `json:"tokens"`
+}
+
+// GetPublicData 获取用于公网展示的脱敏数据
+func (s *MemoryStore) GetPublicData() PublicStoreData {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return json.Marshal(struct {
-		Domains map[string]*DomainRecords `json:"domains"`
-		Tokens  map[string]string         `json:"tokens"`
-	}{
+	return PublicStoreData{
 		Domains: s.Domains,
 		Tokens:  s.Tokens,
-	})
+	}
 }
 
 // GetDomains 获取所有已托管域名

@@ -201,8 +201,7 @@ func (ws *WebServer) handleRecords(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		// ws.store 实现了 custom MarshalJSON (线程安全)
-		json.NewEncoder(w).Encode(ws.store)
+		json.NewEncoder(w).Encode(ws.store.GetPublicData())
 
 	case http.MethodPost:
 		var req struct {
