@@ -136,7 +136,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$CONF_DIR
-ExecStart=$INSTALL_DIR/trinet-dns -dns-addr :53 -web-addr :80 -data-path $CONF_DIR/trinet-records.json
+ExecStart=$INSTALL_DIR/trinet-dns -dns-addr :53 -web-addr :18080 -data-path $CONF_DIR/trinet-records.json
 Restart=always
 RestartSec=5
 LimitNOFILE=65535
@@ -157,7 +157,7 @@ echo -e "${GREEN}====================================================${NC}"
 echo -e "🔹 启动状态: $(systemctl is-active trinet-dns)"
 echo -e "🔹 主程序位置: ${BLUE}$INSTALL_DIR/trinet-dns${NC}"
 echo -e "🔹 配置文件与路由表目录: ${BLUE}$CONF_DIR${NC}"
-echo -e "🔹 本机 Web 管理控制台: ${GREEN}http://<您的服务器公网IP>${NC} (默认 80 端口)"
+echo -e "🔹 本机 Web 管理控制台: ${GREEN}http://<您的服务器公网IP>:18080${NC} (默认 18080 端口)"
 echo -e "🔹 自动更新: 已配置每日凌晨 3:00 自动拉取最新中国三网段并重载解析记录。"
 echo -e "\n${YELLOW}查看服务运行日志: journalctl -u trinet-dns -f${NC}"
 echo -e "${GREEN}====================================================${NC}"
