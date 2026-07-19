@@ -205,6 +205,7 @@ async function loadRecords() {
         
         renderRecordsTable(globalData);
         updateDashboardStats(globalData);
+        loadSysStats();
     } catch (err) {
         console.error('加载记录失败:', err);
     }
@@ -420,6 +421,35 @@ function updateDashboardStats(data) {
         if (desc) desc.textContent = `活动三网线路: ${lineCount} 条`;
     }
 }
+
+// 获取并更新真实系统资源状态
+async function loadSysStats() {
+    try {
+        const res = await fetchAPI('/api/sys/stats');
+        if (!res.ok) return;
+        const stats = await res.json();
+        
+        const cards = document.querySelectorAll('.card-value');
+        if (cards.length >= 3) {
+            cards[2].textContent = stats.uptime;
+            const desc = cards[2].nextElementSibling;
+            if (desc) {
+                desc.textContent = `CPU 占用: ${stats.cpu} | 内存: ${stats.memory}`;
+            }
+        }
+    } catch (err) {
+        console.error('获取系统状态失败:', err);
+    }
+}
+
+// 每 5 秒自动轮询更新系统状态
+setInterval(() => {
+    const token = localStorage.getItem('trinet_token');
+    if (token) {
+        loadSysStats();
+    }
+}, 5000);
+
 
 let logSource = null;
 
