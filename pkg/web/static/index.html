@@ -263,11 +263,20 @@
                             </table>
                         </div>
 
-                        <h3 class="margin-top">客户端更新示例 (Shell Curl)</h3>
-                        <div class="code-block">
+                        <h3 class="margin-top">客户端更新示例 (Shell Curl & 自动测速)</h3>
+                        <div class="code-block" style="margin-bottom: 12px;">
+                            <div style="color: var(--primary-color); font-weight: 600; margin-bottom: 6px;">1. 单线路基础更新 API:</div>
                             <code>curl -X POST "http://[本站域名或IP]/api/ddns/update" \
-  -H "Authorization: Bearer ddns_tok_demo123456" \
-  -d "ip=218.85.118.88"</code>
+  -H "Authorization: Bearer [对应线路的Token]" \
+  -d "ip=1.1.1.1"</code>
+                        </div>
+
+                        <div class="code-block">
+                            <div style="color: #10b981; font-weight: 600; margin-bottom: 6px;">2. 配合 CloudflareSpeedTest 三网测速自动上报脚本示范:</div>
+                            <code># 测速完成后，分别向电信/联通/移动 Token 提交测出的三网最佳 IP
+curl -X POST "http://[本站域名或IP]/api/ddns/update" -H "Authorization: Bearer [电信Token]" -d "ip=$CT_IP"
+curl -X POST "http://[本站域名或IP]/api/ddns/update" -H "Authorization: Bearer [联通Token]" -d "ip=$CU_IP"
+curl -X POST "http://[本站域名或IP]/api/ddns/update" -H "Authorization: Bearer [移动Token]" -d "ip=$CM_IP"</code>
                         </div>
                     </div>
                 </section>
