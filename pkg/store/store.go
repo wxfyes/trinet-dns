@@ -294,7 +294,7 @@ func (s *MemoryStore) loadFromDB() error {
 		return err
 	}
 	if userCount == 0 {
-		_, err = s.db.Exec("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", "admin", "admin123", "admin")
+		_, err = s.db.Exec("INSERT INTO users (username, password_hash, role, plan, expires_at, balance, auto_renew) VALUES (?, ?, 'admin', 'free', 0, 0.0, 0)", "admin", "admin123")
 		if err != nil {
 			return err
 		}
@@ -351,7 +351,10 @@ func (s *MemoryStore) loadFromDB() error {
 	} else {
 		err = s.db.QueryRow("SELECT username, password_hash FROM users WHERE role = 'admin' LIMIT 1").Scan(&s.WebUser, &s.WebPass)
 		if err != nil {
-			return err
+			// 如果旧库没有 admin 记录，自动补全 admin 账号
+			s.EnsureAdminUser("admin", "admin123")
+			s.WebUser = "admin"
+			s.WebPass = "admin123"
 		}
 	}
 
@@ -1290,7 +1293,10 @@ func (s *MemoryStore) GetAllUsersFull() ([]map[string]interface{}, error) {
 		return nil, fmt.Errorf("数据库未初始化")
 	}
 
-	rows, err := s.db.Query("SELECT id, username, role, plan, expires_at, balance, auto_renew, telegram_id FROM users ORDER BY id ASC")
+	// 自动补全确保 admin 存在于数据库中
+	s.EnsureAdminUser(s.WebUser, s.WebPass)
+
+	rows, err := s.db.Query("SELECT id, username, role, COALESCE(plan, 'free'), COALESCE(expires_at, 0), COALESCE(balance, 0.0), COALESCE(auto_renew, 0), COALESCE(telegram_id, '') FROM users ORDER BY id ASC")
 	if err != nil {
 		return nil, err
 	}
@@ -1392,6 +1398,25 @@ func (s *MemoryStore) AdminDeleteUser(userID int64) error {
 
 	_, err := s.db.Exec("DELETE FROM users WHERE id = ?", userID)
 	return err
+}
+
+// EnsureAdminUser 确保数据库 users 表中存在管理员账户 (admin)
+func (s *MemoryStore) EnsureAdminUser(user, pass string) {
+	if s.db == nil {
+		return
+	}
+	if user == "" {
+		user = "admin"
+	}
+	if pass == "" {
+		pass = "admin123"
+	}
+
+	var count int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? OR role = 'admin'", user).Scan(&count)
+	if count == 0 {
+		_, _ = s.db.Exec("INSERT INTO users (username, password_hash, role, plan, expires_at, balance, auto_renew) VALUES (?, ?, 'admin', 'free', 0, 0.0, 0)", user, pass)
+	}
 }
 
 // GetDB 获取底层 SQLite 数据库连接对象
