@@ -109,6 +109,16 @@ install_trinet() {
         sleep 1
     fi
 
+    # 强制清除可能残留的旧进程（无论是手动后台运行还是僵尸进程），防止端口/文件占用导致升级不生效
+    echo "正在清理可能残留的 trinet-dns 进程..."
+    pkill -9 -f trinet-dns 2>/dev/null
+    killall -9 trinet-dns 2>/dev/null
+    if command -v fuser &> /dev/null; then
+        fuser -k -9 18080/tcp 2>/dev/null
+        fuser -k -9 53/tcp 2>/dev/null
+        fuser -k -9 53/udp 2>/dev/null
+    fi
+
     mv "$temp_file" "$INSTALL_DIR/trinet-dns"
     chmod +x "$INSTALL_DIR/trinet-dns"
     echo -e "✓ 主程序更新成功: ${GREEN}$INSTALL_DIR/trinet-dns${NC}"
@@ -116,19 +126,37 @@ install_trinet() {
     # 写入版本号文件供查询
     echo "$LATEST_TAG" > "$CONF_DIR/version"
 
+    # 读取已有的配置作为默认值以防被覆盖
+    local existing_ns="ns1.cngoodok.org,ns2.cngoodok.org"
+    if [ -f "$CONF_DIR/ns_nodes" ]; then
+        existing_ns=$(cat "$CONF_DIR/ns_nodes")
+    fi
+
+    local existing_token=""
+    if [ -f "$CONF_DIR/sync_token" ]; then
+        existing_token=$(cat "$CONF_DIR/sync_token")
+    fi
+    if [ -z "$existing_token" ]; then
+        existing_token=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
+    fi
+
+    local existing_reg="n"
+    if [ -f "$CONF_DIR/open_registration" ]; then
+        existing_reg=$(cat "$CONF_DIR/open_registration")
+    fi
+
     echo -e "\n${YELLOW}请配置主控服务参数（直接回车使用默认值）：${NC}"
     # 1. NS 节点列表
-    read -p "请输入主控 NS 解析节点 (逗号分隔，默认 ns1.cngoodok.org,ns2.cngoodok.org): " MASTER_NS_NODES
-    MASTER_NS_NODES="${MASTER_NS_NODES:-ns1.cngoodok.org,ns2.cngoodok.org}"
+    read -p "请输入主控 NS 解析节点 (当前值: $existing_ns): " MASTER_NS_NODES
+    MASTER_NS_NODES="${MASTER_NS_NODES:-$existing_ns}"
     
     # 2. 同步安全 Token
-    DEFAULT_TOKEN=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
-    read -p "请输入节点同步安全 Token (默认随机生成: $DEFAULT_TOKEN): " MASTER_SYNC_TOKEN
-    MASTER_SYNC_TOKEN="${MASTER_SYNC_TOKEN:-$DEFAULT_TOKEN}"
+    read -p "请输入节点同步安全 Token (当前值: $existing_token): " MASTER_SYNC_TOKEN
+    MASTER_SYNC_TOKEN="${MASTER_SYNC_TOKEN:-$existing_token}"
 
     # 3. 是否开启开放注册
-    read -p "是否开启自服务用户开放注册功能 (y/N, 默认不开启): " CHOOSE_OPEN_REG
-    CHOOSE_OPEN_REG="${CHOOSE_OPEN_REG:-n}"
+    read -p "是否开启自服务用户开放注册功能 (y/N, 当前值: $existing_reg): " CHOOSE_OPEN_REG
+    CHOOSE_OPEN_REG="${CHOOSE_OPEN_REG:-$existing_reg}"
     
     # 保存配置
     echo "$MASTER_SYNC_TOKEN" > "$CONF_DIR/sync_token"
@@ -331,6 +359,15 @@ install_agent() {
         echo "正在停止运行中的 TriNet DNS 服务以进行升级..."
         systemctl stop trinet-dns
         sleep 1
+    fi
+
+    # 强制清除任何残留的 trinet-dns 进程防止占用
+    echo "正在清理可能残留的 trinet-dns 进程..."
+    pkill -9 -f trinet-dns 2>/dev/null
+    killall -9 trinet-dns 2>/dev/null
+    if command -v fuser &> /dev/null; then
+        fuser -k -9 53/tcp 2>/dev/null
+        fuser -k -9 53/udp 2>/dev/null
     fi
 
     mv "$temp_file" "$INSTALL_DIR/trinet-dns"
