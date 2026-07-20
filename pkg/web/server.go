@@ -511,6 +511,10 @@ func (ws *WebServer) Start() {
 	http.HandleFunc("/api/payment/notify/epay", ws.handleEpayNotify)
 	http.HandleFunc("/api/payment/notify/mgate", ws.handleMGateNotify)
 
+	// 个人中心接口
+	http.HandleFunc("/api/user/profile", ws.handleUserProfile)
+	http.HandleFunc("/api/user/profile/auto-renew", ws.handleUpdateAutoRenew)
+
 	// 静态文件服务器
 	subFS, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -851,6 +855,7 @@ func (ws *WebServer) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		Plan          string `json:"plan"`
 		Cycle         string `json:"cycle"`
 		PaymentMethod string `json:"payment_method"`
+		PayType       string `json:"pay_type"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -973,21 +978,35 @@ func (ws *WebServer) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		notifyURL := hostURL + "/api/payment/notify/epay"
 		returnURL := hostURL + "/#billing"
 
-		// 排序并计算 MD5 签名
-		params := url.Values{}
-		params.Add("pid", pid)
-		params.Add("type", "alipay") // 默认跳转支付宝，易支付会自动渲染收银台
-		params.Add("out_trade_no", orderID)
-		params.Add("notify_url", notifyURL)
-		params.Add("return_url", returnURL)
-		params.Add("name", "TriNet DNS 套餐购买")
-		params.Add("money", fmt.Sprintf("%.2f", price))
+		// 构造参数 Map
+		paramsMap := map[string]string{
+			"pid":          pid,
+			"out_trade_no": orderID,
+			"notify_url":   notifyURL,
+			"return_url":   returnURL,
+			"name":         "TriNet DNS 套餐购买",
+			"money":        fmt.Sprintf("%.2f", price),
+		}
+		if req.PayType != "" {
+			paramsMap["type"] = req.PayType
+		}
 
-		// 拼接签名串: alphabetic sort
-		keys := []string{"money", "name", "notify_url", "out_trade_no", "pid", "return_url", "type"}
+		// 字典升序排序 key
+		var keys []string
+		for k := range paramsMap {
+			keys = append(keys, k)
+		}
+		for i := 0; i < len(keys); i++ {
+			for j := i + 1; j < len(keys); j++ {
+				if keys[i] > keys[j] {
+					keys[i], keys[j] = keys[j], keys[i]
+				}
+			}
+		}
+
 		var signStr strings.Builder
 		for i, k := range keys {
-			signStr.WriteString(fmt.Sprintf("%s=%s", k, params.Get(k)))
+			signStr.WriteString(fmt.Sprintf("%s=%s", k, paramsMap[k]))
 			if i < len(keys)-1 {
 				signStr.WriteByte('&')
 			}
@@ -998,17 +1017,15 @@ func (ws *WebServer) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		hasher.Write([]byte(signStr.String()))
 		sign := hex.EncodeToString(hasher.Sum(nil))
 
-		// 构建完整跳转链接
-		payURL := fmt.Sprintf("%s/submit.php?pid=%s&type=alipay&out_trade_no=%s&notify_url=%s&return_url=%s&name=%s&money=%s&sign=%s&sign_type=MD5",
-			strings.TrimSuffix(apiURL, "/"),
-			url.QueryEscape(pid),
-			url.QueryEscape(orderID),
-			url.QueryEscape(notifyURL),
-			url.QueryEscape(returnURL),
-			url.QueryEscape("TriNet DNS 套餐购买"),
-			url.QueryEscape(fmt.Sprintf("%.2f", price)),
-			sign,
-		)
+		// 拼装 URL 参数
+		var urlParams []string
+		for _, k := range keys {
+			urlParams = append(urlParams, fmt.Sprintf("%s=%s", k, url.QueryEscape(paramsMap[k])))
+		}
+		urlParams = append(urlParams, fmt.Sprintf("sign=%s", sign))
+		urlParams = append(urlParams, "sign_type=MD5")
+
+		payURL := fmt.Sprintf("%s/submit.php?%s", strings.TrimSuffix(apiURL, "/"), strings.Join(urlParams, "&"))
 
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"order_id":       orderID,
@@ -1403,4 +1420,56 @@ func (ws *WebServer) handleMGateNotify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Write([]byte("success"))
+}
+
+func (ws *WebServer) handleUserProfile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := ws.checkAuth(w, r)
+	if !ok {
+		return
+	}
+
+	profile, err := ws.store.GetUserProfileFull(user.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf(`{"error":"获取个人信息失败: %s"}`, err.Error())))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(profile)
+}
+
+func (ws *WebServer) handleUpdateAutoRenew(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := ws.checkAuth(w, r)
+	if !ok {
+		return
+	}
+
+	var req struct {
+		AutoRenew bool `json:"auto_renew"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"请求格式错误"}`))
+		return
+	}
+
+	if err := ws.store.UpdateAutoRenew(user.ID, req.AutoRenew); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf(`{"error":"更新失败: %s"}`, err.Error())))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success":true}`))
 }

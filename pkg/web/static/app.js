@@ -297,14 +297,17 @@ function switchTab(tabId) {
         'dashboard': '控制台',
         'records': '解析记录',
         'ddns': '动态 DNS 配置',
-        'billing': '财务中心',
+        'profile': '个人中心',
+        'billing': '套餐购买',
         'logs': '系统运行日志',
         'settings': '系统管理设置'
     };
     document.getElementById('page-title').innerText = titleMap[tabId] || '控制台';
 
     // 切换到对应标签时刷新数据
-    if (tabId === 'records') {
+    if (tabId === 'profile') {
+        loadUserProfile();
+    } else if (tabId === 'records') {
         loadRecords();
     } else if (tabId === 'ddns') {
         loadDDNSTable();
@@ -836,21 +839,21 @@ async function loadSettingsPage() {
         setVal('setting-plan-free-limit', data.plan_free_domain_limit);
         
         setVal('setting-plan-junior-name', data.plan_junior_name);
-        setVal('setting-plan-junior-limit', data.plan_junior_limit);
+        setVal('setting-plan-junior-limit', data.plan_junior_domain_limit);
         setVal('setting-plan-junior-monthly', data.plan_junior_price_monthly);
         setVal('setting-plan-junior-quarterly', data.plan_junior_price_quarterly);
         setVal('setting-plan-junior-semiannually', data.plan_junior_price_semiannually);
         setVal('setting-plan-junior-annually', data.plan_junior_price_annually);
 
         setVal('setting-plan-intermediate-name', data.plan_intermediate_name);
-        setVal('setting-plan-intermediate-limit', data.plan_intermediate_limit);
+        setVal('setting-plan-intermediate-limit', data.plan_intermediate_domain_limit);
         setVal('setting-plan-intermediate-monthly', data.plan_intermediate_price_monthly);
         setVal('setting-plan-intermediate-quarterly', data.plan_intermediate_price_quarterly);
         setVal('setting-plan-intermediate-semiannually', data.plan_intermediate_price_semiannually);
         setVal('setting-plan-intermediate-annually', data.plan_intermediate_price_annually);
 
         setVal('setting-plan-senior-name', data.plan_senior_name);
-        setVal('setting-plan-senior-limit', data.plan_senior_limit);
+        setVal('setting-plan-senior-limit', data.plan_senior_domain_limit);
         setVal('setting-plan-senior-monthly', data.plan_senior_price_monthly);
         setVal('setting-plan-senior-quarterly', data.plan_senior_price_quarterly);
         setVal('setting-plan-senior-semiannually', data.plan_senior_price_semiannually);
@@ -1154,9 +1157,13 @@ async function loadBillingPage() {
             let payButtonsHTML = '';
             if (data.payment_methods) {
                 if (data.payment_methods.epay) {
-                    payButtonsHTML += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'epay')">
-                        💳 线上担保支付 (易支付)
-                    </button>`;
+                    payButtonsHTML += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'epay', '')">
+                        💳 易支付聚合收银台
+                    </button>
+                    <div style="display: flex; gap: 8px; margin-top: 6px;">
+                        <button class="btn btn-outline" style="flex: 1; padding: 6px; font-size: 0.85rem;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'epay', 'alipay')">💙 支付宝</button>
+                        <button class="btn btn-outline" style="flex: 1; padding: 6px; font-size: 0.85rem;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'epay', 'wxpay')">💚 微信支付</button>
+                    </div>`;
                 }
                 if (data.payment_methods.mgate) {
                     payButtonsHTML += `<button class="btn btn-outline" style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'mgate')">
@@ -1216,7 +1223,7 @@ function updatePriceDisplay(planId, selectEl) {
 }
 
 // 用户发起购买下单
-async function placeOrder(planId, selectId, method) {
+async function placeOrder(planId, selectId, method, payType = '') {
     const selectEl = document.getElementById(selectId);
     if (!selectEl) return;
     const cycle = selectEl.value;
@@ -1231,7 +1238,8 @@ async function placeOrder(planId, selectId, method) {
             body: JSON.stringify({
                 plan: planId,
                 cycle: cycle,
-                payment_method: method
+                payment_method: method,
+                pay_type: payType
             })
         });
 
@@ -1256,10 +1264,9 @@ async function placeOrder(planId, selectId, method) {
                 alert(`订单创建成功！\n请向地址: ${data.usdt_trc20_address}\n转账精确保留2位的 ${data.price_usdt} USDT。然后在此页面下方输入 TxID 进行对账激活。`);
             }
         } else {
-            // Epay or MGate，重定向到支付链接
+            // Epay or MGate，在新标签页打开支付链接
             if (data.pay_url) {
-                alert('正在为您跳转到微信/支付宝支付收银台，请在支付完成后返回控制台。');
-                window.location.href = data.pay_url;
+                window.open(data.pay_url, '_blank');
             } else {
                 alert('订单创建成功，但未获取到支付跳转链接，请联系系统管理员。');
             }
@@ -1304,5 +1311,115 @@ async function verifyUsdtOrder(event) {
         }
     } catch (err) {
         alert('对账验证失败: ' + err.message);
+    }
+}
+
+// 加载个人中心数据
+async function loadUserProfile() {
+    try {
+        const res = await fetchAPI('/api/user/profile');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // 1. 用户组 Badge
+        const roleBadge = document.getElementById('profile-role-badge');
+        if (roleBadge) {
+            roleBadge.innerText = data.role === 'admin' ? '管理员' : '普通用户';
+            roleBadge.className = data.role === 'admin' ? 'badge badge-primary' : 'badge';
+        }
+
+        // 2. 套餐标题
+        const planNames = {
+            'free': '免费版',
+            'junior': '初级套餐',
+            'intermediate': '中级套餐',
+            'senior': '高级套餐'
+        };
+        const planTitle = document.getElementById('profile-plan-title');
+        if (planTitle) planTitle.innerText = planNames[data.plan] || data.plan || '免费版';
+
+        // 3. 套餐到期时间
+        const expiresEl = document.getElementById('profile-expires-at');
+        if (expiresEl) {
+            if (!data.expires_at || data.expires_at === 0) {
+                expiresEl.innerText = '无限期';
+            } else {
+                const date = new Date(data.expires_at * 1000);
+                expiresEl.innerText = date.getFullYear() + '/' + (date.getMonth() + 1) + '/' + date.getDate() + ' ' +
+                    String(date.getHours()).padStart(2, '0') + ':' +
+                    String(date.getMinutes()).padStart(2, '0') + ':' +
+                    String(date.getSeconds()).padStart(2, '0');
+            }
+        }
+
+        // 4. 续费价格
+        const renewPriceEl = document.getElementById('profile-renew-price');
+        if (renewPriceEl) renewPriceEl.innerText = data.renew_price || '0';
+
+        // 5. 最大规则数 / 托管上限
+        const maxRulesEl = document.getElementById('profile-max-rules');
+        if (maxRulesEl) maxRulesEl.innerText = data.domain_limit || 1;
+
+        // 6. 钱包余额
+        const balanceEl = document.getElementById('profile-balance');
+        if (balanceEl) balanceEl.innerText = (data.balance || 0).toFixed(2);
+
+        // 7. Telegram 关联
+        const tgStatusEl = document.getElementById('profile-tg-status');
+        if (tgStatusEl) tgStatusEl.innerText = data.telegram_id ? data.telegram_id : '未绑定';
+
+        // 8. 自动续费开关
+        const autoRenewToggle = document.getElementById('profile-auto-renew-toggle');
+        if (autoRenewToggle) autoRenewToggle.checked = !!data.auto_renew;
+
+    } catch (err) {
+        console.error('加载个人中心数据失败:', err);
+    }
+}
+
+// 自动续费开关切换
+async function handleAutoRenewChange(enabled) {
+    try {
+        const res = await fetchAPI('/api/user/profile/auto-renew', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auto_renew: enabled })
+        });
+        if (!res.ok) {
+            alert('修改自动续费状态失败');
+            loadUserProfile();
+        }
+    } catch (err) {
+        alert('修改自动续费状态失败: ' + err.message);
+        loadUserProfile();
+    }
+}
+
+// 个人中心重置密码
+async function handleProfilePasswordSubmit(e) {
+    e.preventDefault();
+    const oldPass = document.getElementById('profile-old-pass').value;
+    const newPass = document.getElementById('profile-new-pass').value;
+
+    if (!oldPass || !newPass) {
+        alert('请输入当前密码和新密码');
+        return;
+    }
+
+    try {
+        const res = await fetchAPI('/api/admin/password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ old_password: oldPass, new_password: newPass })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert('密码重置成功！请重新登录');
+            logout();
+        } else {
+            alert('修改密码失败: ' + (data.error || '原密码错误'));
+        }
+    } catch (err) {
+        alert('修改密码失败: ' + err.message);
     }
 }

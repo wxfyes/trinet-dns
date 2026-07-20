@@ -17,11 +17,14 @@ import (
 
 // User 表示系统中的用户账号
 type User struct {
-	ID        int64  `json:"id"`
-	Username  string `json:"username"`
-	Role      string `json:"role"` // "admin" 或 "user"
-	Plan      string `json:"plan"`
-	ExpiresAt int64  `json:"expires_at"`
+	ID         int64   `json:"id"`
+	Username   string  `json:"username"`
+	Role       string  `json:"role"` // "admin" 或 "user"
+	Plan       string  `json:"plan"`
+	ExpiresAt  int64   `json:"expires_at"`
+	Balance    float64 `json:"balance"`
+	AutoRenew  bool    `json:"auto_renew"`
+	TelegramID string  `json:"telegram_id"`
 }
 
 // DNSRecord 表示一条具体的 DNS 解析记录
@@ -187,6 +190,9 @@ func (s *MemoryStore) Load() error {
 	_, _ = s.db.Exec("ALTER TABLE domains ADD COLUMN owner_id INTEGER DEFAULT 1;")
 	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free';")
 	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN expires_at INTEGER DEFAULT 0;")
+	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN balance REAL DEFAULT 0;")
+	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN auto_renew INTEGER DEFAULT 0;")
+	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN telegram_id TEXT DEFAULT '';")
 
 	// 检查并执行 JSON 迁移
 	if isJSON {
@@ -564,42 +570,40 @@ func (s *MemoryStore) AddRecordWithAuth(userID int64, role string, domain, subdo
 			return fmt.Errorf("无权限修改该域名解析")
 		}
 	} else {
-		if role != "admin" {
-			var plan string
-			var expiresAt int64
-			err := s.db.QueryRow("SELECT plan, expires_at FROM users WHERE id = ?", userID).Scan(&plan, &expiresAt)
-			if err != nil {
-				return fmt.Errorf("获取账户信息失败")
-			}
+		var plan string
+		var expiresAt int64
+		err := s.db.QueryRow("SELECT plan, expires_at FROM users WHERE id = ?", userID).Scan(&plan, &expiresAt)
+		if err != nil {
+			return fmt.Errorf("获取账户信息失败")
+		}
 
-			// 检查过期时间（非 free 套餐且已到期）
-			if plan != "free" && plan != "" && expiresAt > 0 && time.Now().Unix() > expiresAt {
-				return fmt.Errorf("您的套餐服务已到期，请前往系统充值/续费后继续添加域名！")
-			}
+		// 检查过期时间（非 free 套餐且已到期）
+		if plan != "free" && plan != "" && expiresAt > 0 && time.Now().Unix() > expiresAt {
+			return fmt.Errorf("您的套餐服务已到期，请前往系统充值/续费后继续添加域名！")
+		}
 
-			// 统计当前用户拥有的域名数量
-			var currentCount int
-			err = s.db.QueryRow("SELECT COUNT(*) FROM domains WHERE owner_id = ?", userID).Scan(&currentCount)
-			if err != nil {
-				return fmt.Errorf("获取已托管域名数失败")
-			}
+		// 统计当前用户拥有的域名数量
+		var currentCount int
+		err = s.db.QueryRow("SELECT COUNT(*) FROM domains WHERE owner_id = ?", userID).Scan(&currentCount)
+		if err != nil {
+			return fmt.Errorf("获取已托管域名数失败")
+		}
 
-			// 获取套餐上限
-			limitStr := "1"
-			if plan == "free" || plan == "" {
-				limitStr = s.getSettingNoLock("plan_free_domain_limit", "1")
-			} else if plan == "junior" {
-				limitStr = s.getSettingNoLock("plan_junior_domain_limit", "1")
-			} else if plan == "intermediate" {
-				limitStr = s.getSettingNoLock("plan_intermediate_domain_limit", "3")
-			} else if plan == "senior" {
-				limitStr = s.getSettingNoLock("plan_senior_domain_limit", "6")
-			}
+		// 获取套餐上限
+		limitStr := "1"
+		if plan == "free" || plan == "" {
+			limitStr = s.getSettingNoLock("plan_free_domain_limit", "1")
+		} else if plan == "junior" {
+			limitStr = s.getSettingNoLock("plan_junior_domain_limit", "1")
+		} else if plan == "intermediate" {
+			limitStr = s.getSettingNoLock("plan_intermediate_domain_limit", "3")
+		} else if plan == "senior" {
+			limitStr = s.getSettingNoLock("plan_senior_domain_limit", "6")
+		}
 
-			limit, _ := strconv.Atoi(limitStr)
-			if currentCount >= limit {
-				return fmt.Errorf("您的域名托管数量已达当前套餐上限 (%d 个)！请升级套餐", limit)
-			}
+		limit, _ := strconv.Atoi(limitStr)
+		if currentCount >= limit {
+			return fmt.Errorf("您的域名托管数量已达当前套餐上限 (%d 个)！请升级套餐", limit)
 		}
 
 		dom = &DomainRecords{
@@ -1197,6 +1201,82 @@ func (s *MemoryStore) IsTxIDUsed(txID string) (bool, error) {
 		return false, err
 	}
 	return count > 0, nil
+}
+
+// GetUserProfileFull 获取用户详细个人中心数据
+func (s *MemoryStore) GetUserProfileFull(userID int64) (map[string]interface{}, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
+	}
+
+	var u User
+	var autoRenewInt int
+	err := s.db.QueryRow("SELECT id, username, role, plan, expires_at, balance, auto_renew, telegram_id FROM users WHERE id = ?", userID).Scan(
+		&u.ID, &u.Username, &u.Role, &u.Plan, &u.ExpiresAt, &u.Balance, &autoRenewInt, &u.TelegramID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	u.AutoRenew = (autoRenewInt == 1)
+
+	var domainCount int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM domains WHERE owner_id = ?", userID).Scan(&domainCount)
+
+	limitStr := "1"
+	if u.Plan == "free" || u.Plan == "" {
+		limitStr = s.getSettingNoLock("plan_free_domain_limit", "1")
+	} else if u.Plan == "junior" {
+		limitStr = s.getSettingNoLock("plan_junior_domain_limit", "1")
+	} else if u.Plan == "intermediate" {
+		limitStr = s.getSettingNoLock("plan_intermediate_domain_limit", "3")
+	} else if u.Plan == "senior" {
+		limitStr = s.getSettingNoLock("plan_senior_domain_limit", "6")
+	}
+	domainLimit, _ := strconv.Atoi(limitStr)
+
+	// 计算月付续费价格
+	renewPriceStr := "0"
+	if u.Plan == "junior" {
+		renewPriceStr = s.getSettingNoLock("plan_junior_price_monthly", "10")
+	} else if u.Plan == "intermediate" {
+		renewPriceStr = s.getSettingNoLock("plan_intermediate_price_monthly", "20")
+	} else if u.Plan == "senior" {
+		renewPriceStr = s.getSettingNoLock("plan_senior_price_monthly", "40")
+	}
+
+	return map[string]interface{}{
+		"id":           u.ID,
+		"username":     u.Username,
+		"role":         u.Role,
+		"plan":         u.Plan,
+		"expires_at":   u.ExpiresAt,
+		"balance":      u.Balance,
+		"auto_renew":   u.AutoRenew,
+		"telegram_id":  u.TelegramID,
+		"domain_count": domainCount,
+		"domain_limit": domainLimit,
+		"renew_price":  renewPriceStr,
+	}, nil
+}
+
+// UpdateAutoRenew 更新用户的自动续费设置
+func (s *MemoryStore) UpdateAutoRenew(userID int64, autoRenew bool) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
+
+	val := 0
+	if autoRenew {
+		val = 1
+	}
+	_, err := s.db.Exec("UPDATE users SET auto_renew = ? WHERE id = ?", val, userID)
+	return err
 }
 
 // GetDB 获取底层 SQLite 数据库连接对象

@@ -75,9 +75,13 @@
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6m12-4a9 9 0 0 1-15 6.7L3 16"></path></svg>
                     动态 DNS
                 </a>
+                <a href="#profile" class="menu-item" onclick="switchTab('profile')">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    个人中心
+                </a>
                 <a href="#billing" class="menu-item" onclick="switchTab('billing')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line><path d="M16 14h2M12 14h.01"></path></svg>
-                    财务中心
+                    套餐购买
                 </a>
                 <a href="#logs" class="menu-item" onclick="switchTab('logs')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -253,6 +257,81 @@
                             <code>curl -X POST "http://[本站域名或IP]/api/ddns/update" \
   -H "Authorization: Bearer ddns_tok_demo123456" \
   -d "ip=218.85.118.88"</code>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 个人中心面板 -->
+                <section id="tab-profile" class="tab-pane">
+                    <div class="section-container" style="max-width: 900px; margin: 0 auto;">
+                        <div class="card" style="padding: 24px; margin-bottom: 24px;">
+                            <div style="display: flex; flex-direction: column; gap: 16px;">
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">用户组</span>
+                                    <span id="profile-role-badge" class="badge" style="font-weight: 500;">普通用户</span>
+                                </div>
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">套餐</span>
+                                    <strong id="profile-plan-title" style="font-size: 1.05rem;">免费版</strong>
+                                </div>
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">套餐失效</span>
+                                    <span id="profile-expires-at" style="font-size: 0.95rem; font-family: monospace;">无限期</span>
+                                </div>
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">续费价格</span>
+                                    <span style="font-size: 0.95rem; font-weight: 500;"><span id="profile-renew-price">0</span> 元</span>
+                                    <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;" onclick="switchTab('billing')">
+                                        🔄 立即续费
+                                    </button>
+                                </div>
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">最大规则数</span>
+                                    <span id="profile-max-rules" style="font-size: 0.95rem; font-weight: 500;">1</span>
+                                </div>
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">钱包余额</span>
+                                    <span style="font-size: 0.95rem; font-weight: 500;"><span id="profile-balance">0</span> 元</span>
+                                    <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;" onclick="switchTab('billing')">
+                                        ➕ 充值
+                                    </button>
+                                </div>
+                                <div style="display: flex; gap: 12px; align-items: center;">
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">Telegram 关联</span>
+                                    <span id="profile-tg-status" style="font-size: 0.95rem;">未绑定</span>
+                                    <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.85rem;" onclick="alert('Telegram 机器人暂未开启')">🔗 关联</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 账户设置 -->
+                        <div class="card" style="padding: 24px;">
+                            <h3 style="margin-bottom: 20px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">账户设置</h3>
+                            
+                            <!-- 自动续费 -->
+                            <div style="margin-bottom: 24px;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <div>
+                                        <h4 style="margin: 0 0 6px 0; font-size: 1rem;">自动续费</h4>
+                                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">如果您的套餐临近到期，或者流量用完，系统将自动续费。请保证余额充足，否则会导致续费失败。</p>
+                                    </div>
+                                    <label class="switch-container">
+                                        <input type="checkbox" id="profile-auto-renew-toggle" onchange="handleAutoRenewChange(this.checked)">
+                                        <span class="switch-slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- 重置密码 -->
+                            <div>
+                                <h4 style="margin: 0 0 6px 0; font-size: 1rem;">重置密码</h4>
+                                <p style="margin: 0 0 12px 0; font-size: 0.85rem; color: var(--text-muted);">如果您的密码已泄露，可以在这里重置。重置操作会强制下线您在其他地方的登录。</p>
+                                <form id="profile-password-form" onsubmit="handleProfilePasswordSubmit(event)" style="display: flex; flex-direction: column; gap: 12px; max-width: 400px;">
+                                    <input type="password" id="profile-old-pass" class="form-control" placeholder="🔑 当前密码" required autocomplete="current-password">
+                                    <input type="password" id="profile-new-pass" class="form-control" placeholder="🔒 新密码" required autocomplete="new-password">
+                                    <button type="submit" class="btn btn-primary" style="width: 120px; margin-top: 4px;">更新密码</button>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </section>
