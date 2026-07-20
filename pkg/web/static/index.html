@@ -312,8 +312,9 @@
 # 适配系统: Ubuntu / Debian / CentOS / Alpine / RHEL
 # =========================================================
 
-# --- 【请在此配置您在 TriNet DNS 后台生成的 3 个 Token 与服务地址】 ---
+# --- 【请在此配置您在 TriNet DNS 后台生成的 4 个 Token 与服务地址】 ---
 TRINET_SERVER="http://[您的TriNet服务器域名或IP]"
+TOKEN_DEF="[填写默认线路Token]"   # 默认/三网通用 (DEF)
 TOKEN_CT="[填写电信线路Token]"   # 中国电信 (CT)
 TOKEN_CU="[填写联通线路Token]"   # 中国联通 (CU)
 TOKEN_CM="[填写移动线路Token]"   # 中国移动 (CM)
@@ -355,14 +356,15 @@ BEST_IP_3=$(sed -n '4p' result.csv | awk -F, '{print $1}')
 [ -z "$BEST_IP_2" ] && BEST_IP_2="$BEST_IP_1"
 [ -z "$BEST_IP_3" ] && BEST_IP_3="$BEST_IP_1"
 
-echo "[INFO] 测速完成！选出三网最佳 IP: 电信->$BEST_IP_1, 联通->$BEST_IP_2, 移动->$BEST_IP_3"
+echo "[INFO] 测速完成！选出三网最佳 IP: 默认/电信->$BEST_IP_1, 联通->$BEST_IP_2, 移动->$BEST_IP_3"
 
 # 5. 调用 TriNet DNS 接口进行同步更新
+[ -n "$TOKEN_DEF" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_DEF" -d "ip=$BEST_IP_1" && echo " [默认] 已更新"
 [ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$BEST_IP_1" && echo " [电信] 已更新"
 [ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$BEST_IP_2" && echo " [联通] 已更新"
 [ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$BEST_IP_3" && echo " [移动] 已更新"
 
-echo "[SUCCESS] 三网智能解析同步完毕！"</code>
+echo "[SUCCESS] 全线路智能解析同步完毕！"</code>
                                     </div>
                                     <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
                                         💡 <strong>定时任务设置提示 (Linux Crontab)</strong>：在终端运行 <code>crontab -e</code> 追加一行：<br>

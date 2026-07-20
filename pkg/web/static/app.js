@@ -438,6 +438,7 @@ async function loadRecords() {
         renderRecordsTable(globalData);
         updateDashboardStats(globalData);
         loadSysStats();
+        loadDDNSTable();
     } catch (err) {
         console.error('加载记录失败:', err);
     }
@@ -604,7 +605,7 @@ async function saveDdnsToken(event) {
             const data = await res.json();
             alert(`Token 生成成功!\nToken 值: ${data.token}\n请务必复制保存此 Token，关闭后将无法再次查看！`);
             closeDdnsModal();
-            loadRecords(); // 刷新以显示新生成的 Token
+            await loadRecords(); // 刷新以显示新生成的 Token
         } else {
             const data = await res.json();
             alert('生成失败: ' + (data.error || '未知错误'));
@@ -626,7 +627,7 @@ async function deleteToken(token) {
 
         if (res.ok) {
             alert('Token 删除成功');
-            loadRecords();
+            await loadRecords();
         } else {
             const data = await res.json();
             alert('删除失败: ' + (data.error || '未知错误'));
