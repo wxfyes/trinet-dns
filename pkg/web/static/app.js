@@ -920,6 +920,20 @@ async function loadSettingsPage() {
             nsNodesEl.value = data.ns_nodes ? data.ns_nodes.split(',').join('\n') : '';
         }
 
+        // 3.5 设置 Cloudflare 优选 IP 自动同步配置
+        const cfBestEnabledEl = document.getElementById('setting-cf-best-enabled');
+        if (cfBestEnabledEl) {
+            cfBestEnabledEl.checked = data.cf_best_enabled === 'true' || data.cf_best_enabled === true;
+        }
+        const cfBestDomainEl = document.getElementById('setting-cf-best-domain');
+        if (cfBestDomainEl) {
+            cfBestDomainEl.value = data.cf_best_domain || '';
+        }
+        const cfBestIntervalEl = document.getElementById('setting-cf-best-interval');
+        if (cfBestIntervalEl) {
+            cfBestIntervalEl.value = data.cf_best_interval || '30';
+        }
+
         // 4. 设置域名套餐配置信息
         const setVal = (id, val) => {
             const el = document.getElementById(id);
@@ -1094,6 +1108,7 @@ async function updateBasicSetting(key, enabled) {
             let desc = '';
             if (key === 'open_registration') desc = '自服务用户注册';
             if (key === 'cf_turnstile_enabled') desc = 'Cloudflare Turnstile 验证保护';
+            if (key === 'cf_best_enabled') desc = 'Cloudflare 三网优选 IP 自动更新';
             alert(`已成功${enabled ? '开启' : '关闭'} ${desc} 功能！`);
         } else {
             const data = await res.json();
@@ -1104,6 +1119,35 @@ async function updateBasicSetting(key, enabled) {
     } catch (err) {
         alert('修改配置失败: ' + err.message);
         loadSettingsPage();
+    }
+}
+
+// 保存 Cloudflare 优选同步设置
+async function saveCFBestSettings(event) {
+    event.preventDefault();
+    const domain = document.getElementById('setting-cf-best-domain').value.trim();
+    const interval = document.getElementById('setting-cf-best-interval').value;
+
+    const payload = {
+        cf_best_domain: domain,
+        cf_best_interval: interval
+    };
+
+    try {
+        const res = await fetchAPI('/api/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            alert('优选同步配置保存成功！');
+            loadSettingsPage();
+        } else {
+            const data = await res.json();
+            alert('保存失败: ' + (data.error || '未知错误'));
+        }
+    } catch (err) {
+        alert('保存失败: ' + err.message);
     }
 }
 

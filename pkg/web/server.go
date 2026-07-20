@@ -341,6 +341,11 @@ func (ws *WebServer) handleAdminSettings(w http.ResponseWriter, r *http.Request)
 			// USDT 配置
 			"usdt_trc20_address": ws.store.GetSetting("usdt_trc20_address", ""),
 			"usdt_cny_rate":      ws.store.GetSetting("usdt_cny_rate", "7.0"),
+
+			// Cloudflare 优选 IP 配置
+			"cf_best_enabled":  ws.store.GetSetting("cf_best_enabled", "false"),
+			"cf_best_domain":   ws.store.GetSetting("cf_best_domain", ""),
+			"cf_best_interval": ws.store.GetSetting("cf_best_interval", "30"),
 		})
 		return
 	}
@@ -407,6 +412,9 @@ func (ws *WebServer) handleAdminSettings(w http.ResponseWriter, r *http.Request)
 				"mgate_secret_key":                     true,
 				"usdt_trc20_address":                   true,
 				"usdt_cny_rate":                        true,
+				"cf_best_enabled":                      true,
+				"cf_best_domain":                       true,
+				"cf_best_interval":                     true,
 			}
 
 			if allowedKeys[k] {
