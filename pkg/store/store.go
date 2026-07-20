@@ -52,6 +52,7 @@ type MemoryStore struct {
 	db          *sql.DB
 	Domains     map[string]*DomainRecords `json:"domains"`
 	Tokens      map[string]string         `json:"tokens"` // key: token, value: subdomain.domain_isp
+	TokenOwners map[string]int64          `json:"token_owners,omitempty"` // key: token, value: user_id
 	WebUser     string                    `json:"web_user,omitempty"`
 	WebPass     string                    `json:"web_pass,omitempty"`
 	queryCount  uint64
@@ -63,6 +64,7 @@ func NewMemoryStore(filePath string) *MemoryStore {
 		filePath:    filePath,
 		Domains:     make(map[string]*DomainRecords),
 		Tokens:      make(map[string]string),
+		TokenOwners: make(map[string]int64),
 		ispQueryMap: make(map[string]uint64),
 	}
 	store.Load()
@@ -157,7 +159,8 @@ func (s *MemoryStore) Load() error {
 	);
 	CREATE TABLE IF NOT EXISTS ddns_tokens (
 		token TEXT PRIMARY KEY,
-		record_info TEXT
+		record_info TEXT,
+		user_id INTEGER DEFAULT 0
 	);
 	CREATE TABLE IF NOT EXISTS user_sessions (
 		token TEXT PRIMARY KEY,
@@ -181,6 +184,7 @@ func (s *MemoryStore) Load() error {
 		created_at INTEGER,
 		updated_at INTEGER,
 		duration_days INTEGER,
+		paid_at INTEGER,
 		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 	);
 	`
@@ -412,19 +416,22 @@ func (s *MemoryStore) loadFromDB() error {
 	}
 
 	// 4. 载入 DDNS Token
-	tokRows, err := s.db.Query("SELECT token, record_info FROM ddns_tokens")
+	tokRows, err := s.db.Query("SELECT token, record_info, COALESCE(user_id, 0) FROM ddns_tokens")
 	if err != nil {
 		return err
 	}
 	defer tokRows.Close()
 
 	s.Tokens = make(map[string]string)
+	s.TokenOwners = make(map[string]int64)
 	for tokRows.Next() {
 		var token, info string
-		if err := tokRows.Scan(&token, &info); err != nil {
+		var uid int64
+		if err := tokRows.Scan(&token, &info, &uid); err != nil {
 			return err
 		}
 		s.Tokens[token] = info
+		s.TokenOwners[token] = uid
 	}
 
 	return nil
@@ -531,6 +538,13 @@ func (s *MemoryStore) GetUserTokens(userID int64, role string) map[string]string
 
 	filteredTokens := make(map[string]string)
 	for token, target := range s.Tokens {
+		// 条件 1: 显式匹配创建者 ID
+		if ownerID, ok := s.TokenOwners[token]; ok && ownerID == userID {
+			filteredTokens[token] = target
+			continue
+		}
+
+		// 条件 2: 匹配属于该用户托管的域名
 		lastIdx := strings.LastIndex(target, "_")
 		if lastIdx > 0 {
 			fqdn := target[:lastIdx]
@@ -999,9 +1013,10 @@ func (s *MemoryStore) GenerateDDNSToken(userID int64, role string, fqdn, isp str
 
 	target := fqdn + "_" + isp
 	s.Tokens[token] = target
+	s.TokenOwners[token] = userID
 
 	if s.db != nil {
-		_, err := s.db.Exec("INSERT OR REPLACE INTO ddns_tokens (token, record_info) VALUES (?, ?)", token, target)
+		_, err := s.db.Exec("INSERT OR REPLACE INTO ddns_tokens (token, record_info, user_id) VALUES (?, ?, ?)", token, target, userID)
 		if err != nil {
 			return "", err
 		}
