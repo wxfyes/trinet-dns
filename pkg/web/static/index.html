@@ -383,14 +383,16 @@ echo "[SUCCESS] 三网智能解析同步完毕！"</code>
 # =========================================================
 
 TRINET_SERVER="http://[您的TriNet服务器域名或IP]"
+TOKEN_DEF="[填写默认线路Token]"   # 默认/三网通用 (DEF)
 TOKEN_CT="[填写电信线路Token]"   # 中国电信 (CT)
 TOKEN_CU="[填写联通线路Token]"   # 中国联通 (CU)
 TOKEN_CM="[填写移动线路Token]"   # 中国移动 (CM)
 
-echo "[INFO] 正在调用专业 API 抓取全网最新三网优选 IP..."
+echo "[INFO] 正在调用专业 API 抓取全网最新 默认+三网 优选 IP..."
 API_DATA=$(curl -s "https://jkapi.com/api/cf_best?server=1&type=v4")
 
-# 从 jkapi 接口精准提取电信 (CT)、联通 (CU)、移动 (CM) 最佳 IP
+# 从 jkapi 接口精准提取默认/三网通用(CN)、电信(CT)、联通(CU)、移动(CM) 最佳 IP
+DEF_IP=$(echo "$API_DATA" | grep -oE '"CN":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
 CT_IP=$(echo "$API_DATA" | grep -oE '"CT":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
 CU_IP=$(echo "$API_DATA" | grep -oE '"CU":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
 CM_IP=$(echo "$API_DATA" | grep -oE '"CM":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
@@ -399,25 +401,29 @@ CM_IP=$(echo "$API_DATA" | grep -oE '"CM":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[
 if [ -z "$CT_IP" ] || [ -z "$CU_IP" ] || [ -z "$CM_IP" ]; then
     echo "[WARN] 主源未响应，切换备用源抓取..."
     IPS=$(curl -s https://ip.164746.xyz/ | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+    [ -z "$DEF_IP" ] && DEF_IP=$(echo "$IPS" | sed -n '1p')
     [ -z "$CT_IP" ] && CT_IP=$(echo "$IPS" | sed -n '1p')
     [ -z "$CU_IP" ] && CU_IP=$(echo "$IPS" | sed -n '2p')
     [ -z "$CM_IP" ] && CM_IP=$(echo "$IPS" | sed -n '3p')
 fi
 
+[ -z "$DEF_IP" ] && DEF_IP="104.16.1.1"
 [ -z "$CT_IP" ] && CT_IP="104.16.1.1"
 [ -z "$CU_IP" ] && CU_IP="104.17.2.2"
 [ -z "$CM_IP" ] && CM_IP="104.18.3.3"
 
 echo "[SUCCESS] 抓取完成！"
-echo "  - ⚡ 电信最佳 IP: $CT_IP"
-echo "  - ⚡ 联通最佳 IP: $CU_IP"
-echo "  - ⚡ 移动最佳 IP: $CM_IP"
+echo "  - 🌐 默认/三网通用 最佳 IP: $DEF_IP"
+echo "  - ⚡ 中国电信 (CT) 最佳 IP: $CT_IP"
+echo "  - ⚡ 中国联通 (CU) 最佳 IP: $CU_IP"
+echo "  - ⚡ 中国移动 (CM) 最佳 IP: $CM_IP"
 
+[ -n "$TOKEN_DEF" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_DEF" -d "ip=$DEF_IP" && echo "  ✅ 默认线路解析记录已更新"
 [ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$CT_IP" && echo "  ✅ 电信解析记录已更新"
 [ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$CU_IP" && echo "  ✅ 联通解析记录已更新"
 [ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$CM_IP" && echo "  ✅ 移动解析记录已更新"
 
-echo "[ALL DONE] 三网解析记录已成功推送到面板！"</code>
+echo "[ALL DONE] 全线路解析记录已成功推送到面板！"</code>
                                     </div>
                                 </div>
                             </details>
