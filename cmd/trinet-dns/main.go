@@ -73,6 +73,7 @@ func main() {
 		if u, p := recordStore.GetCredentials(); u == "" || p == "" {
 			recordStore.SetCredentials(*webUser, *webPass)
 		}
+		recordStore.StartAutoRenewCron()
 	}
 
 	// 3. 通用解析日志通道，用于实时日志流动

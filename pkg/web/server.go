@@ -514,6 +514,7 @@ func (ws *WebServer) Start() {
 	// 个人中心接口
 	http.HandleFunc("/api/user/profile", ws.handleUserProfile)
 	http.HandleFunc("/api/user/profile/auto-renew", ws.handleUpdateAutoRenew)
+	http.HandleFunc("/api/user/profile/renew", ws.handleUserRenew)
 
 	// 管理员用户管理接口
 	http.HandleFunc("/api/admin/users", ws.handleAdminUsers)
@@ -874,9 +875,33 @@ func (ws *WebServer) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.PaymentMethod != "epay" && req.PaymentMethod != "mgate" && req.PaymentMethod != "usdt" {
+	if req.PaymentMethod != "epay" && req.PaymentMethod != "mgate" && req.PaymentMethod != "usdt" && req.PaymentMethod != "balance" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":"不支持的支付方式"}`))
+		return
+	}
+
+	// 1. 钱包余额直接扣款支付模式
+	if req.PaymentMethod == "balance" {
+		if req.Plan == "recharge" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"充值订单不能使用余额支付"}`))
+			return
+		}
+		price, err := ws.store.PayPlanWithBalance(user.ID, req.Plan, req.Cycle)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"success":  true,
+			"paid_via": "balance",
+			"price":    price,
+			"message":  "已成功使用钱包余额划扣开通/顺延套餐！",
+		})
 		return
 	}
 
@@ -1657,5 +1682,32 @@ func (ws *WebServer) handleGetIP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
 		"ip": ip,
+	})
+}
+
+// handleUserRenew 个人中心一键余额续费当前套餐 30 天
+func (ws *WebServer) handleUserRenew(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := ws.checkAuth(w, r)
+	if !ok {
+		return
+	}
+
+	price, err := ws.store.RenewProfileWithBalance(user.ID)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success": true,
+		"price":   price,
+		"message": "续费成功！已使用账户钱包余额划扣 30 天月费",
 	})
 }

@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -1416,6 +1418,191 @@ func (s *MemoryStore) EnsureAdminUser(user, pass string) {
 	_ = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ? OR role = 'admin'", user).Scan(&count)
 	if count == 0 {
 		_, _ = s.db.Exec("INSERT INTO users (username, password_hash, role, plan, expires_at, balance, auto_renew) VALUES (?, ?, 'admin', 'free', 0, 0.0, 0)", user, pass)
+	}
+}
+
+// CalculatePlanPrice 计算套餐价格
+func (s *MemoryStore) CalculatePlanPrice(plan, cycle string) float64 {
+	basePrice := 10.0
+	if plan == "intermediate" {
+		basePrice = 20.0
+	} else if plan == "senior" {
+		basePrice = 40.0
+	}
+
+	key := fmt.Sprintf("plan_%s_price_monthly", plan)
+	if val := s.getSettingNoLock(key, ""); val != "" {
+		if p, err := strconv.ParseFloat(val, 64); err == nil && p > 0 {
+			basePrice = p
+		}
+	}
+
+	switch cycle {
+	case "quarterly":
+		return math.Round(basePrice*3*0.9*100) / 100
+	case "semiannually":
+		return math.Round(basePrice*6*0.8*100) / 100
+	case "annually":
+		return math.Round(basePrice*12*0.7*100) / 100
+	default:
+		return basePrice
+	}
+}
+
+// PayPlanWithBalance 扣减用户钱包余额开通/变更加更套餐
+func (s *MemoryStore) PayPlanWithBalance(userID int64, plan, cycle string) (float64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return 0, fmt.Errorf("数据库未初始化")
+	}
+
+	price := s.CalculatePlanPrice(plan, cycle)
+
+	var balance float64
+	var currentExpires int64
+	err := s.db.QueryRow("SELECT COALESCE(balance, 0.0), COALESCE(expires_at, 0) FROM users WHERE id = ?", userID).Scan(&balance, &currentExpires)
+	if err != nil {
+		return 0, fmt.Errorf("读取用户余额失败")
+	}
+
+	if balance < price {
+		return price, fmt.Errorf("账户钱包余额不足 (当前余额: ￥%.2f，所需支付: ￥%.2f)，请先充值", balance, price)
+	}
+
+	var addDays int64 = 30
+	switch cycle {
+	case "quarterly":
+		addDays = 90
+	case "semiannually":
+		addDays = 180
+	case "annually":
+		addDays = 365
+	}
+
+	now := time.Now().Unix()
+	newExpires := currentExpires
+	if newExpires < now {
+		newExpires = now + addDays*86400
+	} else {
+		newExpires = newExpires + addDays*86400
+	}
+
+	newBalance := balance - price
+	_, err = s.db.Exec("UPDATE users SET balance = ?, plan = ?, expires_at = ? WHERE id = ?", newBalance, plan, newExpires, userID)
+	if err != nil {
+		return price, fmt.Errorf("扣款开通套餐失败: %w", err)
+	}
+
+	log.Printf("[PAYMENT-BALANCE] 用户 ID [%d] 成功扣除余额 ￥%.2f 开通/升级套餐 [%s] (%s)，新余额 ￥%.2f", userID, price, plan, cycle, newBalance)
+	return price, nil
+}
+
+// RenewProfileWithBalance 个人中心使用钱包余额为当前套餐开通续费 30 天
+func (s *MemoryStore) RenewProfileWithBalance(userID int64) (float64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return 0, fmt.Errorf("数据库未初始化")
+	}
+
+	var plan string
+	var balance float64
+	var currentExpires int64
+	err := s.db.QueryRow("SELECT COALESCE(plan, 'free'), COALESCE(balance, 0.0), COALESCE(expires_at, 0) FROM users WHERE id = ?", userID).Scan(&plan, &balance, &currentExpires)
+	if err != nil {
+		return 0, fmt.Errorf("读取用户信息失败")
+	}
+
+	if plan == "free" || plan == "" {
+		return 0, fmt.Errorf("当前为免费版无须续费，如需更多额度请升级套餐")
+	}
+
+	price := s.CalculatePlanPrice(plan, "monthly")
+	if balance < price {
+		return price, fmt.Errorf("账户钱包余额不足 (当前余额: ￥%.2f，续费月费: ￥%.2f)，请先充值", balance, price)
+	}
+
+	now := time.Now().Unix()
+	newExpires := currentExpires
+	if newExpires < now {
+		newExpires = now + 30*86400
+	} else {
+		newExpires = newExpires + 30*86400
+	}
+
+	newBalance := balance - price
+	_, err = s.db.Exec("UPDATE users SET balance = ?, expires_at = ? WHERE id = ?", newBalance, newExpires, userID)
+	if err != nil {
+		return price, fmt.Errorf("续费划扣失败: %w", err)
+	}
+
+	log.Printf("[AUTORENEW-MANUAL] 用户 ID [%d] 使用余额 ￥%.2f 成功续费套餐 [%s] 30天", userID, price, plan)
+	return price, nil
+}
+
+// StartAutoRenewCron 启动后台定时自动续费巡检协程
+func (s *MemoryStore) StartAutoRenewCron() {
+	// 启动时立即执行一次巡检
+	go s.checkAndAutoRenewUsers()
+
+	ticker := time.NewTicker(1 * time.Hour)
+	go func() {
+		for range ticker.C {
+			s.checkAndAutoRenewUsers()
+		}
+	}()
+}
+
+func (s *MemoryStore) checkAndAutoRenewUsers() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return
+	}
+
+	now := time.Now().Unix()
+	rows, err := s.db.Query("SELECT id, username, plan, COALESCE(balance, 0.0), COALESCE(expires_at, 0) FROM users WHERE auto_renew = 1 AND plan != 'free' AND expires_at > 0 AND expires_at <= ?", now+3*86400)
+	if err != nil {
+		return
+	}
+
+	type renewCandidate struct {
+		id       int64
+		username string
+		plan     string
+		balance  float64
+		expires  int64
+	}
+	var candidates []renewCandidate
+
+	for rows.Next() {
+		var c renewCandidate
+		if err := rows.Scan(&c.id, &c.username, &c.plan, &c.balance, &c.expires); err == nil {
+			candidates = append(candidates, c)
+		}
+	}
+	rows.Close()
+
+	for _, c := range candidates {
+		price := s.CalculatePlanPrice(c.plan, "monthly")
+		if c.balance >= price {
+			newBalance := c.balance - price
+			newExpires := c.expires
+			if newExpires < now {
+				newExpires = now + 30*86400
+			} else {
+				newExpires = newExpires + 30*86400
+			}
+
+			_, _ = s.db.Exec("UPDATE users SET balance = ?, expires_at = ? WHERE id = ?", newBalance, newExpires, c.id)
+			log.Printf("[CRON-AUTORENEW] [SUCCESS] 自动续费定时任务: 用户 [%s] (ID:%d) 扣除余额 ￥%.2f，套餐 [%s] 延期至 %v", c.username, c.id, price, c.plan, time.Unix(newExpires, 0).Format("2006-01-02"))
+		} else {
+			log.Printf("[CRON-AUTORENEW] [FAILED] 自动续费失败: 用户 [%s] (ID:%d) 余额不足 (当前: ￥%.2f, 需要: ￥%.2f)", c.username, c.id, c.balance, price)
+		}
 	}
 }
 

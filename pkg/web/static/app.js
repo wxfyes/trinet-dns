@@ -1186,11 +1186,14 @@ async function loadBillingPage() {
                 }
             }
 
-            // 构建支付按钮，如果配置了对应的支付网关
-            let payButtonsHTML = '';
+            // 构建支付按钮，默认添加钱包余额优先扣减支付
+            let payButtonsHTML = `<button class="btn btn-primary" style="margin-top: 12px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none; font-weight: 600;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'balance', '')">
+                💰 钱包余额支付 (当前余额: ￥${(data.balance || 0).toFixed(2)})
+            </button>`;
+
             if (data.payment_methods) {
                 if (data.payment_methods.epay) {
-                    payButtonsHTML += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'epay', '')">
+                    payButtonsHTML += `<button class="btn btn-primary" style="margin-top: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'epay', '')">
                         💳 易支付聚合收银台
                     </button>
                     <div style="display: flex; gap: 8px; margin-top: 6px;">
@@ -1199,12 +1202,12 @@ async function loadBillingPage() {
                     </div>`;
                 }
                 if (data.payment_methods.mgate) {
-                    payButtonsHTML += `<button class="btn btn-outline" style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'mgate')">
+                    payButtonsHTML += `<button class="btn btn-outline" style="margin-top: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'mgate')">
                         🚀 快捷微信/支付宝 (MGate)
                     </button>`;
                 }
                 if (data.payment_methods.usdt) {
-                    payButtonsHTML += `<button class="btn btn-outline" style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; border-color: #26a17b; color: #26a17b;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'usdt')">
+                    payButtonsHTML += `<button class="btn btn-outline" style="margin-top: 8px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; border-color: #26a17b; color: #26a17b;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'usdt')">
                         🟢 自动链上对账 (USDT-TRC20)
                     </button>`;
                 }
@@ -1278,7 +1281,19 @@ async function placeOrder(planId, selectId, method, payType = '') {
 
         const data = await res.json();
         if (!res.ok) {
-            alert('创建订单失败: ' + (data.error || '未知错误'));
+            if (data.error && data.error.includes('余额不足')) {
+                if (confirm(`${data.error}\n\n是否现在开启【钱包充值】？`)) {
+                    openRechargeModal();
+                }
+            } else {
+                alert('创建订单失败: ' + (data.error || '未知错误'));
+            }
+            return;
+        }
+
+        if (data.paid_via === 'balance' || method === 'balance') {
+            alert(data.message || '购买成功！已成功使用账户钱包余额扣款开通套餐。');
+            loadBillingPage();
             return;
         }
 
@@ -1768,5 +1783,29 @@ async function loadVisitorIP() {
         }
     } catch (e) {
         el.innerText = `本机 IP: 未获取`;
+    }
+}
+
+// 个人中心一键使用钱包余额扣款续费
+async function renewProfileWithBalance() {
+    if (!confirm('确认要使用账户钱包余额划扣 30 天月费为当前套餐开通续费吗？')) return;
+
+    try {
+        const res = await fetchAPI('/api/user/profile/renew', { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            alert(data.message || '续费成功！已成功从账户钱包划扣 30 天');
+            loadUserProfile();
+        } else {
+            if (data.error && data.error.includes('余额不足')) {
+                if (confirm(`${data.error}\n\n是否现在开启【钱包充值】？`)) {
+                    openRechargeModal();
+                }
+            } else {
+                alert('续费失败: ' + (data.error || '未知错误'));
+            }
+        }
+    } catch (err) {
+        alert('续费失败: ' + err.message);
     }
 }
