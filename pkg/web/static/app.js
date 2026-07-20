@@ -111,13 +111,13 @@ function checkLogin() {
                 .catch(err => console.error('自动拉取用户角色失败:', err));
         }
         
-        // 读取 URL 中的 Hash 进行实时页面激活保持
-        const hashTab = window.location.hash.replace('#', '');
-        if (hashTab && document.getElementById(`tab-${hashTab}`)) {
-            switchTab(hashTab);
-        } else {
-            loadRecords();
-        }
+        // 首屏恢复标签页前先强行加载完整的后端数据
+        loadRecords().then(() => {
+            const hashTab = window.location.hash.replace('#', '');
+            if (hashTab && document.getElementById(`tab-${hashTab}`)) {
+                switchTab(hashTab);
+            }
+        });
         setupLogStream();
     } else {
         document.documentElement.classList.remove('logged-in');

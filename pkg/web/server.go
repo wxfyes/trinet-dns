@@ -530,7 +530,13 @@ func (ws *WebServer) Start() {
 	if err != nil {
 		log.Fatalf("[FATAL] 无法定位嵌入的静态资源目录: %s", err.Error())
 	}
-	http.Handle("/", http.FileServer(http.FS(subFS)))
+	fileServer := http.FileServer(http.FS(subFS))
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
+		fileServer.ServeHTTP(w, r)
+	})
 
 	log.Printf("[INFO] Web 管理面板已启动，监听在 http://%s", ws.addr)
 	go func() {
