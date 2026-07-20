@@ -98,6 +98,23 @@ install_trinet() {
     # 写入版本号文件供查询
     echo "$LATEST_TAG" > "$CONF_DIR/version"
 
+    echo -e "\n${YELLOW}请配置主控服务参数（直接回车使用默认值）：${NC}"
+    # 1. NS 节点列表
+    read -p "请输入主控 NS 解析节点 (逗号分隔，默认 ns1.cngoodok.org,ns2.cngoodok.org): " MASTER_NS_NODES
+    MASTER_NS_NODES="${MASTER_NS_NODES:-ns1.cngoodok.org,ns2.cngoodok.org}"
+    
+    # 2. 同步安全 Token
+    DEFAULT_TOKEN=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
+    read -p "请输入节点同步安全 Token (默认随机生成: $DEFAULT_TOKEN): " MASTER_SYNC_TOKEN
+    MASTER_SYNC_TOKEN="${MASTER_SYNC_TOKEN:-$DEFAULT_TOKEN}"
+    
+    # 保存配置
+    echo "$MASTER_SYNC_TOKEN" > "$CONF_DIR/sync_token"
+    echo "$MASTER_NS_NODES" > "$CONF_DIR/ns_nodes"
+    
+    echo -e "✓ 同步 Token 已设置为: ${GREEN}$MASTER_SYNC_TOKEN${NC}"
+    echo -e "✓ NS 节点列表已设置为: ${GREEN}$MASTER_NS_NODES${NC}"
+
     echo -e "正在配置三网 IP 路由更新规则..."
     cat << 'EOF' > "$CONF_DIR/update_geoip.sh"
 #!/bin/bash
@@ -144,7 +161,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$CONF_DIR
-ExecStart=$INSTALL_DIR/trinet-dns -dns-addr :53 -web-addr :18080 -data-path $CONF_DIR/trinet-records.json
+ExecStart=$INSTALL_DIR/trinet-dns -dns-addr :53 -web-addr :18080 -data-path $CONF_DIR/trinet-records.json -sync-token $MASTER_SYNC_TOKEN -ns-nodes $MASTER_NS_NODES
 Restart=always
 RestartSec=5
 LimitNOFILE=65535
@@ -164,6 +181,8 @@ EOF
     echo -e "🔹 主程序位置: ${BLUE}$INSTALL_DIR/trinet-dns${NC}"
     echo -e "🔹 配置文件与路由表目录: ${BLUE}$CONF_DIR${NC}"
     echo -e "🔹 本机 Web 管理控制台: ${GREEN}http://<您的服务器公网IP>:18080${NC} (默认 18080 端口)"
+    echo -e "🔹 节点同步 Token: ${YELLOW}$MASTER_SYNC_TOKEN${NC} (节点安装时需使用此 Token)"
+    echo -e "🔹 集群 NS 解析节点: ${BLUE}$MASTER_NS_NODES${NC}"
     echo -e "🔹 自动更新: 已配置每日凌晨 3:00 自动拉取最新中国三网段并重载解析记录。"
     echo -e "${GREEN}====================================================${NC}"
     read -p "按回车返回主菜单..."
@@ -259,7 +278,13 @@ install_agent() {
     SYNC_URL="http://${MASTER_HOST}:${MASTER_PORT}/api/sync"
     echo -e "✓ 同步地址已设置为: ${GREEN}$SYNC_URL${NC}"
 
+    echo -e "\n${YELLOW}请输入主控端的节点同步安全 Token (如果在主控端配置了的话，否则直接回车):${NC}"
+    read -p "同步 Token: " AGENT_SYNC_TOKEN
+
     mkdir -p $CONF_DIR
+    if [ -n "$AGENT_SYNC_TOKEN" ]; then
+        echo "$AGENT_SYNC_TOKEN" > "$CONF_DIR/sync_token"
+    fi
 
     if systemctl is-active --quiet trinet-dns; then
         echo "正在停止运行中的 TriNet DNS 服务以进行升级..."
@@ -311,6 +336,11 @@ EOF
     CRON_JOB="0 3 * * * $CONF_DIR/update_geoip.sh && systemctl restart trinet-dns"
     (crontab -l 2>/dev/null | grep -Fv "$CONF_DIR/update_geoip.sh"; echo "$CRON_JOB") | crontab -
 
+    local exec_cmd="$INSTALL_DIR/trinet-dns -dns-addr :53 -sync-mode -sync-url $SYNC_URL -sync-interval 15s"
+    if [ -n "$AGENT_SYNC_TOKEN" ]; then
+        exec_cmd="$exec_cmd -sync-token $AGENT_SYNC_TOKEN"
+    fi
+
     echo -e "正在配置 Systemd 节点守护服务..."
     cat << EOF > $SERVICE_FILE
 [Unit]
@@ -321,7 +351,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$CONF_DIR
-ExecStart=$INSTALL_DIR/trinet-dns -dns-addr :53 -sync-mode -sync-url $SYNC_URL -sync-interval 15s
+ExecStart=$exec_cmd
 Restart=always
 RestartSec=5
 LimitNOFILE=65535

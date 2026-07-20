@@ -31,6 +31,8 @@ type WebServer struct {
 	password  string
 	authToken string
 	startTime time.Time
+	syncToken string
+	nsNodes   string
 }
 
 func (ws *WebServer) updateAuthToken(user, pass string) {
@@ -43,13 +45,15 @@ func (ws *WebServer) updateAuthToken(user, pass string) {
 	ws.authToken = hex.EncodeToString(h.Sum(nil))
 }
 
-func NewWebServer(addr string, s *store.MemoryStore, logChan chan string, username, password string) *WebServer {
+func NewWebServer(addr string, s *store.MemoryStore, logChan chan string, username, password string, syncToken string, nsNodes string) *WebServer {
 	ws := &WebServer{
 		addr:      addr,
 		store:     s,
 		logChan:   logChan,
 		clients:   make(map[chan string]bool),
 		startTime: time.Now(),
+		syncToken: syncToken,
+		nsNodes:   nsNodes,
 	}
 	ws.updateAuthToken(username, password)
 	go ws.logBroadcaster()
@@ -195,16 +199,32 @@ func (ws *WebServer) handleSysStats(w http.ResponseWriter, r *http.Request) {
 		"cpu":         fmt.Sprintf("%.1f%%", cpuUsage),
 		"query_count": totalQueries,
 		"isp_stats":   ispStats,
+		"ns_nodes":    ws.nsNodes,
 	}
 	json.NewEncoder(w).Encode(stats)
 }
 
-// handleSync 节点同步专用只读接口，不需要认证，仅返回 DNS 域名解析记录（不含账号/Token 等敏感信息）
+// handleSync 节点同步接口，支持可选的 Token 安全认证，返回 DNS 域名解析记录
 func (ws *WebServer) handleSync(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
+
+	// 校验同步 Token（如果主控端配置了 syncToken 的话）
+	if ws.syncToken != "" {
+		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+		if token == "" {
+			token = r.URL.Query().Get("token")
+		}
+		if token != ws.syncToken {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Write([]byte(`{"error":"未授权的同步请求"}`))
+			return
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	data := ws.store.GetPublicData()
 	// 只返回 domains 部分，不暴露 tokens

@@ -439,6 +439,12 @@ async function loadSysStats() {
             }
         }
 
+        // 更新 NS 节点显示
+        const nsListEl = document.getElementById('config-ns-list');
+        if (nsListEl && stats.ns_nodes) {
+            nsListEl.textContent = stats.ns_nodes.split(',').join('\n');
+        }
+
         // 2. 今日请求总量
         const queryCountEl = document.getElementById('stat-query-count');
         if (queryCountEl && stats.query_count !== undefined) {

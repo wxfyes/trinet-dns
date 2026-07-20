@@ -26,6 +26,7 @@ func main() {
 	// Web 后台用户名与密码
 	webUser := flag.String("web-user", "admin", "Web 管理面板登录用户名")
 	webPass := flag.String("web-pass", "admin123", "Web 管理面板登录密码")
+	nsNodes := flag.String("ns-nodes", "ns1.cngoodok.org,ns2.cngoodok.org", "当前集群的 NS 解析节点列表 (以逗号分隔)")
 
 	// 节点同步模式参数
 	syncMode := flag.Bool("sync-mode", false, "启用节点同步模式（仅作为解析节点，从控制端 API 同步记录）")
@@ -82,7 +83,7 @@ func main() {
 		go startSyncAgent(recordStore, *syncURL, *syncToken, *syncInterval)
 	} else {
 		u, p := recordStore.GetCredentials()
-		webServer := web.NewWebServer(*webAddr, recordStore, logChan, u, p)
+		webServer := web.NewWebServer(*webAddr, recordStore, logChan, u, p, *syncToken, *nsNodes)
 		webServer.Start()
 	}
 
