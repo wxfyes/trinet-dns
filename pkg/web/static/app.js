@@ -933,6 +933,10 @@ async function loadSettingsPage() {
         if (cfBestIntervalEl) {
             cfBestIntervalEl.value = data.cf_best_interval || '30';
         }
+        const cfBestApiUrlEl = document.getElementById('setting-cf-best-api-url');
+        if (cfBestApiUrlEl) {
+            cfBestApiUrlEl.value = data.cf_best_api_url || 'https://jkapi.com/api/cf_best?server=1&type=v4';
+        }
 
         // 4. 设置域名套餐配置信息
         const setVal = (id, val) => {
@@ -1127,10 +1131,12 @@ async function saveCFBestSettings(event) {
     event.preventDefault();
     const domain = document.getElementById('setting-cf-best-domain').value.trim();
     const interval = document.getElementById('setting-cf-best-interval').value;
+    const apiUrl = document.getElementById('setting-cf-best-api-url').value.trim();
 
     const payload = {
         cf_best_domain: domain,
-        cf_best_interval: interval
+        cf_best_interval: interval,
+        cf_best_api_url: apiUrl
     };
 
     try {

@@ -346,6 +346,7 @@ func (ws *WebServer) handleAdminSettings(w http.ResponseWriter, r *http.Request)
 			"cf_best_enabled":  ws.store.GetSetting("cf_best_enabled", "false"),
 			"cf_best_domain":   ws.store.GetSetting("cf_best_domain", ""),
 			"cf_best_interval": ws.store.GetSetting("cf_best_interval", "30"),
+			"cf_best_api_url":  ws.store.GetSetting("cf_best_api_url", "https://jkapi.com/api/cf_best?server=1&type=v4"),
 		})
 		return
 	}
@@ -415,6 +416,7 @@ func (ws *WebServer) handleAdminSettings(w http.ResponseWriter, r *http.Request)
 				"cf_best_enabled":                      true,
 				"cf_best_domain":                       true,
 				"cf_best_interval":                     true,
+				"cf_best_api_url":                      true,
 			}
 
 			if allowedKeys[k] {

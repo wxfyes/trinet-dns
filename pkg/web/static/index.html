@@ -736,6 +736,10 @@ fi</code>
                                 </label>
                             </div>
                             <form id="setting-cf-best-form" onsubmit="saveCFBestSettings(event)">
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label for="setting-cf-best-api-url">优选 IP API 接口地址 (支持配置多个备份接口，以英文逗号 , 分隔，需符合相同 JSON 格式)</label>
+                                    <input type="text" id="setting-cf-best-api-url" placeholder="https://jkapi.com/api/cf_best?server=1&type=v4" required class="form-control font-mono">
+                                </div>
                                 <div class="form-row">
                                     <div class="form-group">
                                         <label for="setting-cf-best-domain">目标解析域名 (例如: cf.yourdomain.com)</label>

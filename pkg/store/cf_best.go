@@ -63,38 +63,58 @@ func (s *MemoryStore) SyncCloudflareBestIPs() {
 		return
 	}
 
-	log.Printf("[CF-BEST] 正在从 API 获取最新 Cloudflare 三网优选 IP (目标域名: %s)...", targetDomain)
+	// 读取接口地址，支持配置多个，以英文逗号分隔
+	apiURLsStr := s.GetSetting("cf_best_api_url", "https://jkapi.com/api/cf_best?server=1&type=v4")
+	apiURLs := strings.Split(apiURLsStr, ",")
 
-	// 调用 API
-	apiURL := "https://jkapi.com/api/cf_best?server=1&type=v4"
+	var ctIP, cuIP, cmIP, defIP string
+	var success bool
+
 	client := &http.Client{Timeout: 10 * time.Second}
-	resp, err := client.Get(apiURL)
-	if err != nil {
-		log.Printf("[CF-BEST ERROR] 获取优选 IP 失败: %s", err.Error())
+
+	for _, apiURL := range apiURLs {
+		apiURL = strings.TrimSpace(apiURL)
+		if apiURL == "" {
+			continue
+		}
+
+		log.Printf("[CF-BEST] 正在从 API 获取最新 Cloudflare 三网优选 IP: %s (目标域名: %s)...", apiURL, targetDomain)
+
+		resp, err := client.Get(apiURL)
+		if err != nil {
+			log.Printf("[CF-BEST WARNING] 请求 API [%s] 失败: %s", apiURL, err.Error())
+			continue
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			log.Printf("[CF-BEST WARNING] API [%s] 返回状态码异常: %d", apiURL, resp.StatusCode)
+			continue
+		}
+
+		var data CFBestIPResponse
+		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+			log.Printf("[CF-BEST WARNING] 解析 API [%s] 的 JSON 失败: %s", apiURL, err.Error())
+			continue
+		}
+
+		if !data.Status || len(data.Info.CT) == 0 || len(data.Info.CU) == 0 || len(data.Info.CM) == 0 {
+			log.Printf("[CF-BEST WARNING] API [%s] 返回的数据不完整: %+v", apiURL, data)
+			continue
+		}
+
+		ctIP = data.Info.CT[0].IP
+		cuIP = data.Info.CU[0].IP
+		cmIP = data.Info.CM[0].IP
+		defIP = ctIP // 默认线路使用电信 IP
+		success = true
+		break
+	}
+
+	if !success {
+		log.Printf("[CF-BEST ERROR] 所有配置的优选 IP API 均请求失败，本次更新终止。")
 		return
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("[CF-BEST ERROR] API 返回状态码异常: %d", resp.StatusCode)
-		return
-	}
-
-	var data CFBestIPResponse
-	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-		log.Printf("[CF-BEST ERROR] 解析 API JSON 失败: %s", err.Error())
-		return
-	}
-
-	if !data.Status || len(data.Info.CT) == 0 || len(data.Info.CU) == 0 || len(data.Info.CM) == 0 {
-		log.Printf("[CF-BEST ERROR] API 返回的数据不完整: %+v", data)
-		return
-	}
-
-	ctIP := data.Info.CT[0].IP
-	cuIP := data.Info.CU[0].IP
-	cmIP := data.Info.CM[0].IP
-	defIP := ctIP // 默认线路使用电信 IP
 
 	log.Printf("[CF-BEST] 获取成功: 电信(CT): %s, 联通(CU): %s, 移动(CM): %s", ctIP, cuIP, cmIP)
 
