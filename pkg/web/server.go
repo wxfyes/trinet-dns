@@ -428,6 +428,11 @@ func (ws *WebServer) handleAdminSettings(w http.ResponseWriter, r *http.Request)
 			}
 		}
 
+		// 如果保存了 CF 优选配置且处于开启状态，立即触发一次后台同步
+		if ws.store.GetSetting("cf_best_enabled", "false") == "true" {
+			go ws.store.SyncCloudflareBestIPs()
+		}
+
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "success",
 		})
