@@ -41,6 +41,9 @@ function checkLogin() {
             if (menuUsers) menuUsers.style.display = 'none';
         }
 
+        // 加载访问者 IP
+        loadVisitorIP();
+
         // 若本地角色缓存缺失，自动向后端拉取校准，避免历史会话没有缓存 role 字段导致菜单隐藏
         if (!role) {
             fetchAPI('/api/user/billing')
@@ -1434,12 +1437,12 @@ async function handleProfilePasswordSubmit(e) {
 // 钱包充值 Modal 交互
 function openRechargeModal() {
     const modal = document.getElementById('recharge-modal');
-    if (modal) modal.classList.add('active');
+    if (modal) modal.classList.add('show');
 }
 
 function closeRechargeModal() {
     const modal = document.getElementById('recharge-modal');
-    if (modal) modal.classList.remove('active');
+    if (modal) modal.classList.remove('show');
 }
 
 async function submitRecharge(e) {
@@ -1593,7 +1596,7 @@ function openAdminCreateUserModal() {
     document.getElementById('admin-user-pass').required = true;
 
     const modal = document.getElementById('admin-user-modal');
-    if (modal) modal.classList.add('active');
+    if (modal) modal.classList.add('show');
 }
 
 // 打开编辑用户 Modal
@@ -1613,12 +1616,12 @@ function openAdminEditUserModal(id, username, role, plan) {
     document.getElementById('admin-user-pass').value = '';
 
     const modal = document.getElementById('admin-user-modal');
-    if (modal) modal.classList.add('active');
+    if (modal) modal.classList.add('show');
 }
 
 function closeAdminUserModal() {
     const modal = document.getElementById('admin-user-modal');
-    if (modal) modal.classList.remove('active');
+    if (modal) modal.classList.remove('show');
 }
 
 // 保存用户创建/编辑
@@ -1714,5 +1717,33 @@ async function deleteAdminUser(id, username) {
         }
     } catch (err) {
         alert('删除失败: ' + err.message);
+    }
+}
+
+// 动态加载访问者外网/本机 IP
+async function loadVisitorIP() {
+    const el = document.getElementById('visitor-ip-display');
+    if (!el) return;
+    try {
+        const res = await fetch('/api/ip');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.ip) {
+                el.innerText = `本机 IP: ${data.ip}`;
+                return;
+            }
+        }
+    } catch (e) {}
+    
+    try {
+        const res = await fetch('https://api.ipify.org?format=json');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.ip) {
+                el.innerText = `本机 IP: ${data.ip}`;
+            }
+        }
+    } catch (e) {
+        el.innerText = `本机 IP: 未获取`;
     }
 }

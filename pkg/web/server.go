@@ -521,6 +521,9 @@ func (ws *WebServer) Start() {
 	http.HandleFunc("/api/admin/users/update", ws.handleAdminUpdateUser)
 	http.HandleFunc("/api/admin/users/delete", ws.handleAdminDeleteUser)
 
+	// 通用 IP 查询接口
+	http.HandleFunc("/api/ip", ws.handleGetIP)
+
 	// 静态文件服务器
 	subFS, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -1631,4 +1634,28 @@ func (ws *WebServer) handleAdminDeleteUser(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(`{"success":true}`))
+}
+
+func (ws *WebServer) handleGetIP(w http.ResponseWriter, r *http.Request) {
+	ip := r.Header.Get("X-Forwarded-For")
+	if ip != "" {
+		ip = strings.Split(ip, ",")[0]
+	}
+	if ip == "" {
+		ip = r.Header.Get("X-Real-IP")
+	}
+	if ip == "" {
+		host, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err == nil {
+			ip = host
+		} else {
+			ip = r.RemoteAddr
+		}
+	}
+	ip = strings.TrimSpace(ip)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"ip": ip,
+	})
 }
