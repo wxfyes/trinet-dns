@@ -540,7 +540,7 @@ async function loadDDNSTable() {
     if (!tbody) return;
 
     try {
-        const res = await fetchAPI('/api/ddns/token');
+        const res = await fetchAPI('/api/ddns/token?t=' + Date.now());
         if (!res.ok) throw new Error('无法连接到 Token API');
         const data = await res.json();
 
@@ -737,7 +737,7 @@ function updateDashboardStats(data) {
 // 获取并更新真实系统资源状态
 async function loadSysStats() {
     try {
-        const res = await fetchAPI('/api/sys/stats');
+        const res = await fetchAPI('/api/sys/stats?t=' + Date.now());
         if (!res.ok) return;
         const stats = await res.json();
         

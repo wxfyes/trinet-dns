@@ -106,6 +106,11 @@ func NewWebServer(addr string, s *store.MemoryStore, logChan chan string, userna
 }
 
 func (ws *WebServer) checkAuth(w http.ResponseWriter, r *http.Request) (*store.User, bool) {
+	// 禁用所有 API 的浏览器和代理缓存
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if token == "" {
 		token = r.URL.Query().Get("token")

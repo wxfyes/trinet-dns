@@ -199,6 +199,7 @@ func (s *MemoryStore) Load() error {
 	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN balance REAL DEFAULT 0;")
 	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN auto_renew INTEGER DEFAULT 0;")
 	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN telegram_id TEXT DEFAULT '';")
+	_, _ = s.db.Exec("ALTER TABLE ddns_tokens ADD COLUMN user_id INTEGER DEFAULT 0;")
 
 	// 检查并执行 JSON 迁移
 	if isJSON {
@@ -451,7 +452,8 @@ func (s *MemoryStore) saveUnlocked() error {
 	// 全量同步 Token 表
 	_, _ = tx.Exec("DELETE FROM ddns_tokens")
 	for token, target := range s.Tokens {
-		_, err = tx.Exec("INSERT INTO ddns_tokens (token, record_info) VALUES (?, ?)", token, target)
+		uid := s.TokenOwners[token]
+		_, err = tx.Exec("INSERT INTO ddns_tokens (token, record_info, user_id) VALUES (?, ?, ?)", token, target, uid)
 		if err != nil {
 			return err
 		}

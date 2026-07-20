@@ -6,11 +6,14 @@ export default {
     const url = new URL(request.url);
     const path = url.pathname;
 
-    // 跨域处理 (CORS)
+    // 跨域与缓存控制处理 (CORS & Cache Control)
     const corsHeaders = {
       "Access-Control-Allow-Origin": "*",
       "Access-Control-Allow-Methods": "GET, POST, DELETE, OPTIONS",
       "Access-Control-Allow-Headers": "Content-Type, Authorization",
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      "Pragma": "no-cache",
+      "Expires": "0"
     };
 
     if (request.method === "OPTIONS") {
@@ -309,7 +312,7 @@ export default {
       }
 
       // API: DDNS Token 管理列表
-      if (path === "/api/ddns/tokens" && request.method === "GET") {
+      if (path === "/api/ddns/token" && request.method === "GET") {
         if (!(await checkAdminAuth(request))) {
           return new Response(JSON.stringify({ error: "Unauthorized" }), {
             status: 401,
@@ -317,13 +320,16 @@ export default {
           });
         }
         const store = await getStore();
-        return new Response(JSON.stringify(store.tokens || {}), {
+        return new Response(JSON.stringify({
+          status: "success",
+          tokens: store.tokens || {}
+        }), {
           headers: { "Content-Type": "application/json", ...corsHeaders }
         });
       }
 
       // API: 创建 DDNS Token
-      if (path === "/api/ddns/tokens" && request.method === "POST") {
+      if (path === "/api/ddns/token" && request.method === "POST") {
         if (!(await checkAdminAuth(request))) {
           return new Response(JSON.stringify({ error: "Unauthorized" }), {
             status: 401,
@@ -332,14 +338,33 @@ export default {
         }
         const store = await getStore();
         const body = await request.json();
-        const { token, binding } = body;
+        const { fqdn, isp } = body;
 
-        if (!token || !binding) {
-          return new Response(JSON.stringify({ error: "Missing token or binding" }), {
+        if (!fqdn || !isp) {
+          return new Response(JSON.stringify({ error: "域名和线路不能为空" }), {
             status: 400,
             headers: { "Content-Type": "application/json", ...corsHeaders }
           });
         }
+
+        // 验证主域名是否在该系统托管
+        let domain = "";
+        for (const dom of Object.keys(store.domains || {})) {
+          if (fqdn === dom || fqdn.endsWith("." + dom)) {
+            domain = dom;
+            break;
+          }
+        }
+        if (!domain) {
+          return new Response(JSON.stringify({ error: "该域名未在本系统托管" }), {
+            status: 400,
+            headers: { "Content-Type": "application/json", ...corsHeaders }
+          });
+        }
+
+        const randomHex = Array.from({length: 8}, () => Math.floor(Math.random()*256).toString(16).padStart(2, '0')).join('');
+        const token = "ddns_tok_" + randomHex;
+        const binding = fqdn + "_" + isp;
 
         if (!store.tokens) {
           store.tokens = {};
@@ -347,13 +372,13 @@ export default {
 
         store.tokens[token] = binding;
         await saveStore(store);
-        return new Response(JSON.stringify({ message: "Token created successfully" }), {
+        return new Response(JSON.stringify({ status: "success", token: token }), {
           headers: { "Content-Type": "application/json", ...corsHeaders }
         });
       }
 
       // API: 删除 DDNS Token
-      if (path === "/api/ddns/tokens" && request.method === "DELETE") {
+      if (path === "/api/ddns/token" && request.method === "DELETE") {
         if (!(await checkAdminAuth(request))) {
           return new Response(JSON.stringify({ error: "Unauthorized" }), {
             status: 401,
@@ -361,11 +386,10 @@ export default {
           });
         }
         const store = await getStore();
-        const body = await request.json();
-        const { token } = body;
+        const token = url.searchParams.get("token");
 
         if (!token) {
-          return new Response(JSON.stringify({ error: "Missing token" }), {
+          return new Response(JSON.stringify({ error: "缺少 token 参数" }), {
             status: 400,
             headers: { "Content-Type": "application/json", ...corsHeaders }
           });
@@ -376,7 +400,7 @@ export default {
         }
 
         await saveStore(store);
-        return new Response(JSON.stringify({ message: "Token deleted successfully" }), {
+        return new Response(JSON.stringify({ status: "success" }), {
           headers: { "Content-Type": "application/json", ...corsHeaders }
         });
       }
