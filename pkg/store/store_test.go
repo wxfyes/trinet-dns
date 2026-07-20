@@ -261,4 +261,20 @@ func TestMemoryStoreMultiUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to delete token: %s", err)
 	}
+
+	// 8. 测试系统设置 (GetSetting/SetSetting)
+	valDefault := store.GetSetting("test_key", "default_val")
+	if valDefault != "default_val" {
+		t.Errorf("Expected default value, got %s", valDefault)
+	}
+
+	err = store.SetSetting("test_key", "custom_val")
+	if err != nil {
+		t.Fatalf("Failed to set setting: %s", err)
+	}
+
+	valUpdated := store.GetSetting("test_key", "default_val")
+	if valUpdated != "custom_val" {
+		t.Errorf("Expected custom_val, got %s", valUpdated)
+	}
 }

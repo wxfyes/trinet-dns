@@ -157,6 +157,10 @@ func (s *MemoryStore) Load() error {
 		expires_at INTEGER,
 		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
 	);
+	CREATE TABLE IF NOT EXISTS sys_settings (
+		key TEXT PRIMARY KEY,
+		value TEXT
+	);
 	`
 	if _, err := s.db.Exec(query); err != nil {
 		return fmt.Errorf("failed to init db tables: %w", err)
@@ -940,6 +944,36 @@ func (s *MemoryStore) DeleteDDNSToken(userID int64, role string, token string) e
 		return err
 	}
 	return nil
+}
+
+// GetSetting 获取系统配置项，如果不存在则返回默认值
+func (s *MemoryStore) GetSetting(key string, defaultVal string) string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.db == nil {
+		return defaultVal
+	}
+
+	var val string
+	err := s.db.QueryRow("SELECT value FROM sys_settings WHERE key = ?", key).Scan(&val)
+	if err != nil {
+		return defaultVal
+	}
+	return val
+}
+
+// SetSetting 设置系统配置项
+func (s *MemoryStore) SetSetting(key string, val string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
+
+	_, err := s.db.Exec("INSERT OR REPLACE INTO sys_settings (key, value) VALUES (?, ?)", key, val)
+	return err
 }
 
 func (s *MemoryStore) initDefaultData() {

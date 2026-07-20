@@ -290,6 +290,7 @@ async function loadRecords() {
         renderRecordsTable(globalData);
         updateDashboardStats(globalData);
         loadSysStats();
+        loadAdminSettings();
     } catch (err) {
         console.error('加载记录失败:', err);
     }
@@ -705,3 +706,56 @@ function clearLogs() {
 window.addEventListener('DOMContentLoaded', () => {
     checkLogin();
 });
+
+// 获取系统注册配置（仅对管理员可见）
+async function loadAdminSettings() {
+    try {
+        const res = await fetchAPI('/api/admin/settings');
+        const adminSection = document.getElementById('admin-settings-section');
+        if (res.ok) {
+            const data = await res.json();
+            if (adminSection) {
+                adminSection.style.display = 'block';
+            }
+            const toggleInput = document.getElementById('toggle-registration');
+            if (toggleInput) {
+                toggleInput.checked = !!data.open_registration;
+            }
+        } else {
+            if (adminSection) {
+                adminSection.style.display = 'none';
+            }
+        }
+    } catch (err) {
+        console.error('获取管理员设置失败:', err);
+    }
+}
+
+// 修改开放注册设置
+async function toggleRegistrationSetting(enabled) {
+    try {
+        const res = await fetchAPI('/api/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ open_registration: enabled })
+        });
+        if (res.ok) {
+            const data = await res.json();
+            alert(`已成功${enabled ? '开启' : '关闭'}开放注册功能！`);
+        } else {
+            const data = await res.json();
+            alert('修改失败: ' + (data.error || '未知错误'));
+            // 恢复开关状态
+            const toggleInput = document.getElementById('toggle-registration');
+            if (toggleInput) {
+                toggleInput.checked = !enabled;
+            }
+        }
+    } catch (err) {
+        alert('修改失败: ' + err.message);
+        const toggleInput = document.getElementById('toggle-registration');
+        if (toggleInput) {
+            toggleInput.checked = !enabled;
+        }
+    }
+}

@@ -183,6 +183,21 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- 管理员设置 (仅管理员可见) -->
+                    <div class="section-container" id="admin-settings-section" style="display: none; margin-top: 24px;">
+                        <h2 class="section-title">系统管理设置</h2>
+                        <div class="card" style="padding: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+                            <div>
+                                <h3 style="font-size: 1rem; margin-bottom: 4px;">开放用户注册</h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem;">开启后，主控登录页面将开放自服务账户注册按钮</p>
+                            </div>
+                            <label class="switch-container">
+                                <input type="checkbox" id="toggle-registration" onchange="toggleRegistrationSetting(this.checked)">
+                                <span class="switch-slider"></span>
+                            </label>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- 解析记录面板 -->

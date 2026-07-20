@@ -30,7 +30,20 @@ type WebServer struct {
 	openReg   bool
 }
 
+func (ws *WebServer) isOpenRegistration() bool {
+	return ws.store.GetSetting("open_registration", "false") == "true"
+}
+
 func NewWebServer(addr string, s *store.MemoryStore, logChan chan string, username, password string, syncToken string, nsNodes string, openReg bool) *WebServer {
+	// 如果数据库中不存在，则根据启动参数或环境变量设置默认值
+	if s.GetSetting("open_registration", "") == "" {
+		val := "false"
+		if openReg {
+			val = "true"
+		}
+		_ = s.SetSetting("open_registration", val)
+	}
+
 	ws := &WebServer{
 		addr:      addr,
 		store:     s,
@@ -71,7 +84,7 @@ func (ws *WebServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		// 返回公开配置 (如是否开启注册)
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"open_registration": ws.openReg,
+			"open_registration": ws.isOpenRegistration(),
 		})
 		return
 	}
@@ -114,7 +127,7 @@ func (ws *WebServer) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if !ws.openReg {
+	if !ws.isOpenRegistration() {
 		w.WriteHeader(http.StatusForbidden)
 		w.Write([]byte(`{"error":"注册已关闭"}`))
 		return
@@ -193,6 +206,53 @@ func (ws *WebServer) handlePassword(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"success","message":"密码修改成功"}`))
 }
 
+func (ws *WebServer) handleAdminSettings(w http.ResponseWriter, r *http.Request) {
+	user, ok := ws.checkAuth(w, r)
+	if !ok {
+		return
+	}
+	if user.Role != "admin" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"只有管理员能进行系统配置"}`))
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodGet {
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"open_registration": ws.isOpenRegistration(),
+		})
+		return
+	}
+	if r.Method == http.MethodPost {
+		var req struct {
+			OpenRegistration bool `json:"open_registration"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"参数格式错误"}`))
+			return
+		}
+		
+		val := "false"
+		if req.OpenRegistration {
+			val = "true"
+		}
+		if err := ws.store.SetSetting("open_registration", val); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
+			return
+		}
+		
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "success",
+			"open_registration": ws.isOpenRegistration(),
+		})
+		return
+	}
+	w.WriteHeader(http.StatusMethodNotAllowed)
+}
+
 func (ws *WebServer) handleSysStats(w http.ResponseWriter, r *http.Request) {
 	_, ok := ws.checkAuth(w, r)
 	if !ok {
@@ -268,6 +328,7 @@ func (ws *WebServer) Start() {
 	http.HandleFunc("/api/register", ws.handleRegister)
 	http.HandleFunc("/api/logout", ws.handleLogout)
 	http.HandleFunc("/api/admin/password", ws.handlePassword)
+	http.HandleFunc("/api/admin/settings", ws.handleAdminSettings)
 	http.HandleFunc("/api/records", ws.handleRecords)
 	http.HandleFunc("/api/ddns/token", ws.handleDDNSToken)
 	http.HandleFunc("/api/ddns/update", ws.handleDDNSUpdate)
