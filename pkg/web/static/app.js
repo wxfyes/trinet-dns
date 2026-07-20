@@ -28,14 +28,17 @@ function checkLogin() {
     const loginOverlay = document.getElementById('login-overlay');
     const appContainer = document.getElementById('app-container');
     const menuSettings = document.getElementById('menu-settings');
+    const menuUsers = document.getElementById('menu-users');
     if (token) {
         loginOverlay.style.display = 'none';
         appContainer.style.display = 'flex';
         
         if (role === 'admin') {
             if (menuSettings) menuSettings.style.display = 'flex';
+            if (menuUsers) menuUsers.style.display = 'flex';
         } else {
             if (menuSettings) menuSettings.style.display = 'none';
+            if (menuUsers) menuUsers.style.display = 'none';
         }
 
         // 若本地角色缓存缺失，自动向后端拉取校准，避免历史会话没有缓存 role 字段导致菜单隐藏
@@ -300,6 +303,7 @@ function switchTab(tabId) {
         'profile': '个人中心',
         'billing': '套餐购买',
         'logs': '系统运行日志',
+        'users': '用户管理控制台',
         'settings': '系统管理设置'
     };
     document.getElementById('page-title').innerText = titleMap[tabId] || '控制台';
@@ -311,6 +315,8 @@ function switchTab(tabId) {
         loadRecords();
     } else if (tabId === 'ddns') {
         loadDDNSTable();
+    } else if (tabId === 'users') {
+        loadUsersTable();
     } else if (tabId === 'settings') {
         loadSettingsPage();
     } else if (tabId === 'billing') {
@@ -1144,10 +1150,11 @@ async function loadBillingPage() {
                 'annually': '/年'
             };
 
-            // 过滤支持的周期价格，默认显示第一个
+            // 过滤支持的周期价格，默认显示第一个 (按月付优先)
             let defaultCycle = '';
-            for (let c in p.prices) {
-                if (parseFloat(p.prices[c]) >= 0) {
+            const cycleKeys = ['monthly', 'quarterly', 'semiannually', 'annually'];
+            for (let c of cycleKeys) {
+                if (p.prices[c] !== undefined && parseFloat(p.prices[c]) >= 0) {
                     if (!defaultCycle) defaultCycle = c;
                     cycleSelectOptions += `<option value="${c}" data-price="${p.prices[c]}">${cycleNames[c]} - ￥${p.prices[c]}${cycleMonths[c]}</option>`;
                 }
@@ -1421,5 +1428,291 @@ async function handleProfilePasswordSubmit(e) {
         }
     } catch (err) {
         alert('修改密码失败: ' + err.message);
+    }
+}
+
+// 钱包充值 Modal 交互
+function openRechargeModal() {
+    const modal = document.getElementById('recharge-modal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeRechargeModal() {
+    const modal = document.getElementById('recharge-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+async function submitRecharge(e) {
+    e.preventDefault();
+    const amount = parseFloat(document.getElementById('recharge-amount').value);
+    if (isNaN(amount) || amount < 10.0) {
+        alert('最小充值金额为 10 元');
+        return;
+    }
+
+    const radios = document.getElementsByName('recharge-method');
+    let selectedMethod = 'epay-all';
+    for (let r of radios) {
+        if (r.checked) {
+            selectedMethod = r.value;
+            break;
+        }
+    }
+
+    let method = 'epay';
+    let payType = '';
+    if (selectedMethod === 'epay-all') {
+        method = 'epay';
+        payType = '';
+    } else if (selectedMethod === 'epay-alipay') {
+        method = 'epay';
+        payType = 'alipay';
+    } else if (selectedMethod === 'epay-wxpay') {
+        method = 'epay';
+        payType = 'wxpay';
+    } else if (selectedMethod === 'usdt') {
+        method = 'usdt';
+    }
+
+    try {
+        const res = await fetchAPI('/api/user/billing/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                plan: 'recharge',
+                cycle: 'monthly',
+                payment_method: method,
+                pay_type: payType,
+                amount: amount
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert('创建充值订单失败: ' + (data.error || '未知错误'));
+            return;
+        }
+
+        closeRechargeModal();
+
+        if (method === 'usdt') {
+            switchTab('billing');
+            const usdtCard = document.getElementById('usdt-verify-card');
+            if (usdtCard) {
+                usdtCard.style.display = 'block';
+                document.getElementById('usdt-pay-address').innerText = data.usdt_trc20_address;
+                document.getElementById('usdt-pay-amount').innerText = data.price_usdt;
+                document.getElementById('usdt-verify-order-id').value = data.order_id;
+                document.getElementById('usdt-verify-txid').value = '';
+                usdtCard.scrollIntoView({ behavior: 'smooth' });
+                alert(`充值订单创建成功！\n请向地址: ${data.usdt_trc20_address}\n转账精确保留2位的 ${data.price_usdt} USDT。转账成功后输入 TxID 进行对账到账。`);
+            }
+        } else {
+            if (data.pay_url) {
+                window.open(data.pay_url, '_blank');
+            } else {
+                alert('充值订单创建成功，但未获取到支付跳转链接，请联系管理员。');
+            }
+        }
+    } catch (err) {
+        alert('创建充值订单失败: ' + err.message);
+    }
+}
+
+// 管理员用户管理数据加载
+async function loadUsersTable() {
+    try {
+        const res = await fetchAPI('/api/admin/users');
+        if (!res.ok) {
+            alert('无法获取用户列表（无管理员权限）');
+            return;
+        }
+        const users = await res.json();
+        const tbody = document.getElementById('users-table-body');
+        if (!tbody) return;
+
+        if (!users || users.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; color: var(--text-muted);">暂无注册用户数据</td></tr>`;
+            return;
+        }
+
+        const planNames = {
+            'free': '免费版',
+            'junior': '初级套餐',
+            'intermediate': '中级套餐',
+            'senior': '高级套餐'
+        };
+
+        tbody.innerHTML = users.map(u => {
+            let expiresStr = '无限期';
+            if (u.expires_at && u.expires_at > 0) {
+                const d = new Date(u.expires_at * 1000);
+                expiresStr = d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate() + ' ' +
+                    String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+            }
+
+            const roleBadge = u.role === 'admin' 
+                ? `<span class="badge badge-primary">管理员</span>` 
+                : `<span class="badge">普通用户</span>`;
+
+            return `
+                <tr>
+                    <td>${u.id}</td>
+                    <td><strong>${escapeHTML(u.username)}</strong></td>
+                    <td>${roleBadge}</td>
+                    <td>${planNames[u.plan] || u.plan}</td>
+                    <td style="font-family: monospace; font-size: 0.85rem;">${expiresStr}</td>
+                    <td><strong style="color: var(--primary);">${(u.balance || 0).toFixed(2)}</strong> 元</td>
+                    <td>${u.domain_count || 0} 个</td>
+                    <td>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.8rem;" onclick="openAdminEditUserModal(${u.id}, '${escapeHTML(u.username)}', '${u.role}', '${u.plan}')">✏️ 编辑</button>
+                            ${u.id !== 1 ? `<button class="btn btn-outline danger" style="padding: 2px 8px; font-size: 0.8rem;" onclick="deleteAdminUser(${u.id}, '${escapeHTML(u.username)}')">🗑️ 删除</button>` : ''}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error('加载用户列表失败:', err);
+    }
+}
+
+// 打开新增用户 Modal
+function openAdminCreateUserModal() {
+    document.getElementById('admin-user-modal-title').innerText = '手动新增用户';
+    document.getElementById('admin-user-id').value = '';
+    document.getElementById('admin-user-name').value = '';
+    document.getElementById('admin-user-name').disabled = false;
+    document.getElementById('admin-user-role').value = 'user';
+    document.getElementById('admin-user-plan').value = 'free';
+    document.getElementById('admin-user-balance-group').style.display = 'none';
+    document.getElementById('admin-user-expire-group').style.display = 'none';
+    document.getElementById('admin-user-pass').placeholder = '请输入用户密码';
+    document.getElementById('admin-user-pass').required = true;
+
+    const modal = document.getElementById('admin-user-modal');
+    if (modal) modal.classList.add('active');
+}
+
+// 打开编辑用户 Modal
+function openAdminEditUserModal(id, username, role, plan) {
+    document.getElementById('admin-user-modal-title').innerText = `编辑用户 [${username}]`;
+    document.getElementById('admin-user-id').value = id;
+    document.getElementById('admin-user-name').value = username;
+    document.getElementById('admin-user-name').disabled = true;
+    document.getElementById('admin-user-role').value = role || 'user';
+    document.getElementById('admin-user-plan').value = plan || 'free';
+    document.getElementById('admin-user-add-balance').value = '0.00';
+    document.getElementById('admin-user-balance-group').style.display = 'block';
+    document.getElementById('admin-user-expire-group').style.display = 'block';
+    document.getElementById('admin-user-expire-select').value = 'keep';
+    document.getElementById('admin-user-pass').placeholder = '若不修改密码请留空';
+    document.getElementById('admin-user-pass').required = false;
+    document.getElementById('admin-user-pass').value = '';
+
+    const modal = document.getElementById('admin-user-modal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeAdminUserModal() {
+    const modal = document.getElementById('admin-user-modal');
+    if (modal) modal.classList.remove('active');
+}
+
+// 保存用户创建/编辑
+async function saveAdminUser(e) {
+    e.preventDefault();
+    const id = document.getElementById('admin-user-id').value;
+    const username = document.getElementById('admin-user-name').value;
+    const role = document.getElementById('admin-user-role').value;
+    const plan = document.getElementById('admin-user-plan').value;
+    const newPass = document.getElementById('admin-user-pass').value;
+
+    if (!id) {
+        // 创建新用户
+        try {
+            const res = await fetchAPI('/api/admin/users/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: username,
+                    password: newPass,
+                    role: role,
+                    plan: plan
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`用户 [${username}] 创建成功！`);
+                closeAdminUserModal();
+                loadUsersTable();
+            } else {
+                alert('创建用户失败: ' + (data.error || '未知错误'));
+            }
+        } catch (err) {
+            alert('创建用户失败: ' + err.message);
+        }
+    } else {
+        // 编辑修改已有用户
+        const addBalance = parseFloat(document.getElementById('admin-user-add-balance').value) || 0;
+        const expireChoice = document.getElementById('admin-user-expire-select').value;
+        let expiresAt = -1; // -1 表示不修改
+
+        if (expireChoice === '0') {
+            expiresAt = 0;
+        } else if (expireChoice === '+30d') {
+            expiresAt = Math.floor(Date.now() / 1000) + (30 * 24 * 3600);
+        } else if (expireChoice === '+365d') {
+            expiresAt = Math.floor(Date.now() / 1000) + (365 * 24 * 3600);
+        }
+
+        try {
+            const res = await fetchAPI('/api/admin/users/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    user_id: parseInt(id),
+                    role: role,
+                    plan: plan,
+                    expires_at: expiresAt,
+                    add_balance: addBalance,
+                    new_password: newPass
+                })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(`用户 [${username}] 设置已更新！`);
+                closeAdminUserModal();
+                loadUsersTable();
+            } else {
+                alert('更新用户失败: ' + (data.error || '未知错误'));
+            }
+        } catch (err) {
+            alert('更新用户失败: ' + err.message);
+        }
+    }
+}
+
+// 删除用户
+async function deleteAdminUser(id, username) {
+    if (!confirm(`警告：确认要删除用户 [${username}] 及其拥有的所有解析记录吗？此操作不可逆！`)) return;
+
+    try {
+        const res = await fetchAPI('/api/admin/users/delete', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ user_id: id })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            alert(`用户 [${username}] 已成功删除！`);
+            loadUsersTable();
+        } else {
+            alert('删除失败: ' + (data.error || '未知错误'));
+        }
+    } catch (err) {
+        alert('删除失败: ' + err.message);
     }
 }

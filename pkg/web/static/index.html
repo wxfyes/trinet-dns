@@ -87,6 +87,10 @@
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     系统日志
                 </a>
+                <a href="#users" class="menu-item" id="menu-users" onclick="switchTab('users')" style="display: none;">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    用户管理
+                </a>
                 <a href="#settings" class="menu-item" id="menu-settings" onclick="switchTab('settings')" style="display: none;">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                     系统设置
@@ -97,11 +101,7 @@
                     <span class="dot active"></span>
                     <span class="status-text">DNS 引擎已运行</span>
                 </div>
-                <button class="btn btn-text" style="padding: 4px 8px; margin-top: 8px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px; color: var(--text-muted);" onclick="showPasswordModal()">
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    修改密码
-                </button>
-                <button class="btn btn-text danger" style="padding: 4px 8px; margin-top: 4px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px;" onclick="logout()">
+                <button class="btn btn-text danger" style="padding: 4px 8px; margin-top: 8px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px;" onclick="logout()">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin: 0;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
                     退出登录
                 </button>
@@ -292,7 +292,7 @@
                                 <div style="display: flex; gap: 12px; align-items: center;">
                                     <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">钱包余额</span>
                                     <span style="font-size: 0.95rem; font-weight: 500;"><span id="profile-balance">0</span> 元</span>
-                                    <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;" onclick="switchTab('billing')">
+                                    <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;" onclick="openRechargeModal()">
                                         ➕ 充值
                                     </button>
                                 </div>
@@ -384,6 +384,41 @@
                         </div>
                         <div class="log-viewport" id="log-container">
                             <!-- 实时推流展示 -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 用户管理面板 (仅管理员可见) -->
+                <section id="tab-users" class="tab-pane">
+                    <div class="section-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                            <div>
+                                <h2 style="margin: 0; font-size: 1.5rem;">用户全权管理控制台</h2>
+                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">管理全站所有注册用户，可直接后台为用户调整余额、修改套餐、延期与重置密码。</p>
+                            </div>
+                            <button class="btn btn-primary" onclick="openAdminCreateUserModal()">
+                                ➕ 手动添加新用户
+                            </button>
+                        </div>
+                        
+                        <div class="table-container card">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>用户名</th>
+                                        <th>角色</th>
+                                        <th>当前套餐</th>
+                                        <th>到期时间</th>
+                                        <th>钱包余额</th>
+                                        <th>已托管域名数</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="users-table-body">
+                                    <!-- 由 app.js 动态渲染 -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </section>
@@ -762,6 +797,120 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="closeDdnsModal()">取消</button>
                         <button type="submit" class="btn btn-primary">生成</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 钱包充值 Modal 弹窗 -->
+    <div class="modal-overlay" id="recharge-modal">
+        <div class="modal" style="max-width: 480px;">
+            <div class="modal-header">
+                <h3>钱包充值</h3>
+                <button class="modal-close" onclick="closeRechargeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="recharge-form" onsubmit="submitRecharge(event)">
+                    <div class="form-group">
+                        <label for="recharge-amount">充值金额 (CNY)</label>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <input type="number" id="recharge-amount" class="form-control" value="100.00" min="10" step="0.01" required style="font-size: 1.1rem; font-weight: 600;">
+                            <span style="font-weight: 600; color: var(--text-muted);">CNY</span>
+                        </div>
+                        <small style="color: var(--text-muted); font-size: 0.85rem; margin-top: 6px; display: block;">
+                            <strong>最小充值金额: 10 元</strong>
+                        </small>
+                    </div>
+
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label>请选择支付通道</label>
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.02);">
+                                <input type="radio" name="recharge-method" value="epay-all" checked>
+                                <span>💳 易支付聚合收银台</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.02);">
+                                <input type="radio" name="recharge-method" value="epay-alipay">
+                                <span>💙 支付宝</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.02);">
+                                <input type="radio" name="recharge-method" value="epay-wxpay">
+                                <span>💚 微信支付</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.02);">
+                                <input type="radio" name="recharge-method" value="usdt">
+                                <span>🟢 USDT-TRC20 链上对账</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer" style="margin-top: 20px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeRechargeModal()">取消</button>
+                        <button type="submit" class="btn btn-primary" style="padding: 8px 24px;">充 值</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 管理员编辑/创建用户 Modal 弹窗 -->
+    <div class="modal-overlay" id="admin-user-modal">
+        <div class="modal" style="max-width: 520px;">
+            <div class="modal-header">
+                <h3 id="admin-user-modal-title">编辑用户</h3>
+                <button class="modal-close" onclick="closeAdminUserModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="admin-user-form" onsubmit="saveAdminUser(event)">
+                    <input type="hidden" id="admin-user-id">
+                    
+                    <div class="form-group">
+                        <label for="admin-user-name">用户名</label>
+                        <input type="text" id="admin-user-name" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="admin-user-role">用户角色</label>
+                        <select id="admin-user-role" class="form-control">
+                            <option value="user">普通用户 (user)</option>
+                            <option value="admin">系统管理员 (admin)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="admin-user-plan">绑定套餐</label>
+                        <select id="admin-user-plan" class="form-control">
+                            <option value="free">免费版 (free)</option>
+                            <option value="junior">初级套餐 (junior)</option>
+                            <option value="intermediate">中级套餐 (intermediate)</option>
+                            <option value="senior">高级套餐 (senior)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" id="admin-user-balance-group">
+                        <label for="admin-user-add-balance">余额变更 (填正数为增加余额，负数为扣减)</label>
+                        <input type="number" id="admin-user-add-balance" class="form-control" placeholder="0.00" step="0.01" value="0.00">
+                    </div>
+
+                    <div class="form-group" id="admin-user-expire-group">
+                        <label for="admin-user-expire-select">套餐到期调整</label>
+                        <select id="admin-user-expire-select" class="form-control">
+                            <option value="keep">保持现有到期时间</option>
+                            <option value="0">设为无限期 (0)</option>
+                            <option value="+30d">当前基础上延期 30 天</option>
+                            <option value="+365d">当前基础上延期 365 天</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="admin-user-pass">密码 (若不修改请留空)</label>
+                        <input type="password" id="admin-user-pass" class="form-control" placeholder="输入新密码">
+                    </div>
+
+                    <div class="modal-footer" style="margin-top: 20px;">
+                        <button type="button" class="btn btn-secondary" onclick="closeAdminUserModal()">取消</button>
+                        <button type="submit" class="btn btn-primary">保存设置</button>
                     </div>
                 </form>
             </div>

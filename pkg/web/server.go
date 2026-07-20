@@ -515,6 +515,12 @@ func (ws *WebServer) Start() {
 	http.HandleFunc("/api/user/profile", ws.handleUserProfile)
 	http.HandleFunc("/api/user/profile/auto-renew", ws.handleUpdateAutoRenew)
 
+	// 管理员用户管理接口
+	http.HandleFunc("/api/admin/users", ws.handleAdminUsers)
+	http.HandleFunc("/api/admin/users/create", ws.handleAdminCreateUser)
+	http.HandleFunc("/api/admin/users/update", ws.handleAdminUpdateUser)
+	http.HandleFunc("/api/admin/users/delete", ws.handleAdminDeleteUser)
+
 	// 静态文件服务器
 	subFS, err := fs.Sub(staticFS, "static")
 	if err != nil {
@@ -852,27 +858,16 @@ func (ws *WebServer) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var req struct {
-		Plan          string `json:"plan"`
-		Cycle         string `json:"cycle"`
-		PaymentMethod string `json:"payment_method"`
-		PayType       string `json:"pay_type"`
+		Plan          string  `json:"plan"`
+		Cycle         string  `json:"cycle"`
+		PaymentMethod string  `json:"payment_method"`
+		PayType       string  `json:"pay_type"`
+		Amount        float64 `json:"amount"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte(`{"error":"请求参数格式错误"}`))
-		return
-	}
-
-	if req.Plan != "junior" && req.Plan != "intermediate" && req.Plan != "senior" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"不支持的套餐类型"}`))
-		return
-	}
-
-	if req.Cycle != "monthly" && req.Cycle != "quarterly" && req.Cycle != "semiannually" && req.Cycle != "annually" {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"不支持的结算周期"}`))
 		return
 	}
 
@@ -882,42 +877,66 @@ func (ws *WebServer) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 1. 获取套餐价格
-	priceKey := fmt.Sprintf("plan_%s_price_%s", req.Plan, req.Cycle)
-	defaultPrices := map[string]string{
-		"plan_junior_price_monthly":      "10",
-		"plan_junior_price_quarterly":    "28",
-		"plan_junior_price_semiannually": "50",
-		"plan_junior_price_annually":     "90",
+	var price float64
+	durationDays := 0
 
-		"plan_intermediate_price_monthly":      "20",
-		"plan_intermediate_price_quarterly":    "55",
-		"plan_intermediate_price_semiannually": "100",
-		"plan_intermediate_price_annually":     "180",
+	if req.Plan == "recharge" {
+		if req.Amount < 10.0 {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"最小充值金额为 10 元"}`))
+			return
+		}
+		price = req.Amount
+	} else {
+		if req.Plan != "junior" && req.Plan != "intermediate" && req.Plan != "senior" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"不支持的套餐类型"}`))
+			return
+		}
 
-		"plan_senior_price_monthly":      "40",
-		"plan_senior_price_quarterly":    "110",
-		"plan_senior_price_semiannually": "200",
-		"plan_senior_price_annually":     "360",
-	}
+		if req.Cycle != "monthly" && req.Cycle != "quarterly" && req.Cycle != "semiannually" && req.Cycle != "annually" {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte(`{"error":"不支持的结算周期"}`))
+			return
+		}
 
-	priceStr := ws.store.GetSetting(priceKey, defaultPrices[priceKey])
-	price, err := strconv.ParseFloat(priceStr, 64)
-	if err != nil || price <= 0 {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(`{"error":"系统套餐价格配置错误"}`))
-		return
-	}
+		// 1. 获取套餐价格
+		priceKey := fmt.Sprintf("plan_%s_price_%s", req.Plan, req.Cycle)
+		defaultPrices := map[string]string{
+			"plan_junior_price_monthly":      "10",
+			"plan_junior_price_quarterly":    "28",
+			"plan_junior_price_semiannually": "50",
+			"plan_junior_price_annually":     "90",
 
-	// 2. 根据周期确定天数
-	durationDays := 31
-	switch req.Cycle {
-	case "quarterly":
-		durationDays = 93
-	case "semiannually":
-		durationDays = 186
-	case "annually":
-		durationDays = 366
+			"plan_intermediate_price_monthly":      "20",
+			"plan_intermediate_price_quarterly":    "55",
+			"plan_intermediate_price_semiannually": "100",
+			"plan_intermediate_price_annually":     "180",
+
+			"plan_senior_price_monthly":      "40",
+			"plan_senior_price_quarterly":    "110",
+			"plan_senior_price_semiannually": "200",
+			"plan_senior_price_annually":     "360",
+		}
+
+		priceStr := ws.store.GetSetting(priceKey, defaultPrices[priceKey])
+		var err error
+		price, err = strconv.ParseFloat(priceStr, 64)
+		if err != nil || price <= 0 {
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write([]byte(`{"error":"系统套餐价格配置错误"}`))
+			return
+		}
+
+		durationDays = 31
+		switch req.Cycle {
+		case "quarterly":
+			durationDays = 93
+		case "semiannually":
+			durationDays = 186
+		case "annually":
+			durationDays = 366
+		}
 	}
 
 	// 生成订单号
@@ -1467,6 +1486,146 @@ func (ws *WebServer) handleUpdateAutoRenew(w http.ResponseWriter, r *http.Reques
 	if err := ws.store.UpdateAutoRenew(user.ID, req.AutoRenew); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte(fmt.Sprintf(`{"error":"更新失败: %s"}`, err.Error())))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success":true}`))
+}
+
+func (ws *WebServer) handleAdminUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := ws.checkAuth(w, r)
+	if !ok || user.Role != "admin" {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"需要管理员权限"}`))
+		return
+	}
+
+	users, err := ws.store.GetAllUsersFull()
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf(`{"error":"获取用户列表失败: %s"}`, err.Error())))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(users)
+}
+
+func (ws *WebServer) handleAdminCreateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := ws.checkAuth(w, r)
+	if !ok || user.Role != "admin" {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"需要管理员权限"}`))
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+		Plan     string `json:"plan"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"请求格式错误"}`))
+		return
+	}
+
+	if req.Username == "" || req.Password == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"用户名和密码不能为空"}`))
+		return
+	}
+
+	if err := ws.store.AdminCreateUser(req.Username, req.Password, req.Role, req.Plan); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success":true}`))
+}
+
+func (ws *WebServer) handleAdminUpdateUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := ws.checkAuth(w, r)
+	if !ok || user.Role != "admin" {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"需要管理员权限"}`))
+		return
+	}
+
+	var req struct {
+		UserID     int64   `json:"user_id"`
+		Role       string  `json:"role"`
+		Plan       string  `json:"plan"`
+		ExpiresAt  int64   `json:"expires_at"`
+		AddBalance float64 `json:"add_balance"`
+		NewPass    string  `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"请求格式错误"}`))
+		return
+	}
+
+	if req.UserID <= 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"无效的用户ID"}`))
+		return
+	}
+
+	if err := ws.store.AdminUpdateUser(req.UserID, req.Role, req.Plan, req.ExpiresAt, req.AddBalance, req.NewPass); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf(`{"error":"更新失败: %s"}`, err.Error())))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"success":true}`))
+}
+
+func (ws *WebServer) handleAdminDeleteUser(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := ws.checkAuth(w, r)
+	if !ok || user.Role != "admin" {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"需要管理员权限"}`))
+		return
+	}
+
+	var req struct {
+		UserID int64 `json:"user_id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"请求格式错误"}`))
+		return
+	}
+
+	if err := ws.store.AdminDeleteUser(req.UserID); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf(`{"error":"删除失败: %s"}`, err.Error())))
 		return
 	}
 

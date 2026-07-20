@@ -1135,8 +1135,9 @@ func (s *MemoryStore) MarkOrderPaid(orderID string, txID string) error {
 	// 1. 获取订单详情
 	var userID int64
 	var plan, status string
+	var price float64
 	var durationDays int
-	err := s.db.QueryRow("SELECT user_id, plan, status, duration_days FROM orders WHERE order_id = ?", orderID).Scan(&userID, &plan, &status, &durationDays)
+	err := s.db.QueryRow("SELECT user_id, plan, price, status, duration_days FROM orders WHERE order_id = ?", orderID).Scan(&userID, &plan, &price, &status, &durationDays)
 	if err != nil {
 		return fmt.Errorf("订单不存在: %w", err)
 	}
@@ -1145,26 +1146,8 @@ func (s *MemoryStore) MarkOrderPaid(orderID string, txID string) error {
 		return nil // 已经处理过了，直接返回成功
 	}
 
-	// 2. 获取用户当前套餐和过期时间
-	var currentPlan string
-	var currentExpiresAt int64
-	err = s.db.QueryRow("SELECT plan, expires_at FROM users WHERE id = ?", userID).Scan(&currentPlan, &currentExpiresAt)
-	if err != nil {
-		return fmt.Errorf("获取用户信息失败: %w", err)
-	}
-
 	now := time.Now().Unix()
-	var newExpiresAt int64
 
-	// 如果用户的套餐跟订单买的套餐一致，且当前套餐未到期，则在当前过期时间基础上累加
-	if currentPlan == plan && currentExpiresAt > now {
-		newExpiresAt = currentExpiresAt + int64(durationDays*24*3600)
-	} else {
-		// 否则，从当前时间算起
-		newExpiresAt = now + int64(durationDays*24*3600)
-	}
-
-	// 3. 开始事务更新订单状态和用户权限
 	tx, err := s.db.Begin()
 	if err != nil {
 		return err
@@ -1177,10 +1160,29 @@ func (s *MemoryStore) MarkOrderPaid(orderID string, txID string) error {
 		return err
 	}
 
-	// 更新用户套餐与过期时间
-	_, err = tx.Exec("UPDATE users SET plan = ?, expires_at = ? WHERE id = ?", plan, newExpiresAt, userID)
-	if err != nil {
-		return err
+	if plan == "recharge" {
+		// 充值余额订单，给用户账号加余额
+		_, err = tx.Exec("UPDATE users SET balance = balance + ? WHERE id = ?", price, userID)
+		if err != nil {
+			return err
+		}
+	} else {
+		// 套餐购买订单
+		var currentPlan string
+		var currentExpiresAt int64
+		_ = s.db.QueryRow("SELECT plan, expires_at FROM users WHERE id = ?", userID).Scan(&currentPlan, &currentExpiresAt)
+
+		var newExpiresAt int64
+		if currentPlan == plan && currentExpiresAt > now {
+			newExpiresAt = currentExpiresAt + int64(durationDays*24*3600)
+		} else {
+			newExpiresAt = now + int64(durationDays*24*3600)
+		}
+
+		_, err = tx.Exec("UPDATE users SET plan = ?, expires_at = ? WHERE id = ?", plan, newExpiresAt, userID)
+		if err != nil {
+			return err
+		}
 	}
 
 	return tx.Commit()
@@ -1276,6 +1278,119 @@ func (s *MemoryStore) UpdateAutoRenew(userID int64, autoRenew bool) error {
 		val = 1
 	}
 	_, err := s.db.Exec("UPDATE users SET auto_renew = ? WHERE id = ?", val, userID)
+	return err
+}
+
+// GetAllUsersFull 管理员获取所有用户详细信息列表
+func (s *MemoryStore) GetAllUsersFull() ([]map[string]interface{}, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
+	}
+
+	rows, err := s.db.Query("SELECT id, username, role, plan, expires_at, balance, auto_renew, telegram_id FROM users ORDER BY id ASC")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []map[string]interface{}
+	for rows.Next() {
+		var u User
+		var autoRenewInt int
+		if err := rows.Scan(&u.ID, &u.Username, &u.Role, &u.Plan, &u.ExpiresAt, &u.Balance, &autoRenewInt, &u.TelegramID); err != nil {
+			continue
+		}
+
+		var domainCount int
+		_ = s.db.QueryRow("SELECT COUNT(*) FROM domains WHERE owner_id = ?", u.ID).Scan(&domainCount)
+
+		result = append(result, map[string]interface{}{
+			"id":           u.ID,
+			"username":     u.Username,
+			"role":         u.Role,
+			"plan":         u.Plan,
+			"expires_at":   u.ExpiresAt,
+			"balance":      u.Balance,
+			"auto_renew":   autoRenewInt == 1,
+			"telegram_id":  u.TelegramID,
+			"domain_count": domainCount,
+		})
+	}
+
+	return result, nil
+}
+
+// AdminCreateUser 管理员手动创建新用户
+func (s *MemoryStore) AdminCreateUser(username, password, role, plan string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
+
+	var count int
+	_ = s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", username).Scan(&count)
+	if count > 0 {
+		return fmt.Errorf("用户名 [%s] 已存在", username)
+	}
+
+	if role == "" {
+		role = "user"
+	}
+	if plan == "" {
+		plan = "free"
+	}
+
+	_, err := s.db.Exec("INSERT INTO users (username, password_hash, role, plan, expires_at, balance, auto_renew) VALUES (?, ?, ?, ?, 0, 0.0, 0)", username, password, role, plan)
+	return err
+}
+
+// AdminUpdateUser 管理员后台调整用户属性 (角色、套餐、到期时间、增减余额、重置密码)
+func (s *MemoryStore) AdminUpdateUser(userID int64, role, plan string, expiresAt int64, addBalance float64, newPass string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
+
+	if role != "" {
+		_, _ = s.db.Exec("UPDATE users SET role = ? WHERE id = ?", role, userID)
+	}
+	if plan != "" {
+		_, _ = s.db.Exec("UPDATE users SET plan = ? WHERE id = ?", plan, userID)
+	}
+	if expiresAt >= 0 {
+		_, _ = s.db.Exec("UPDATE users SET expires_at = ? WHERE id = ?", expiresAt, userID)
+	}
+	if addBalance != 0 {
+		_, _ = s.db.Exec("UPDATE users SET balance = balance + ? WHERE id = ?", addBalance, userID)
+	}
+	if newPass != "" {
+		_, _ = s.db.Exec("UPDATE users SET password_hash = ? WHERE id = ?", newPass, userID)
+	}
+
+	return nil
+}
+
+// AdminDeleteUser 管理员删除指定用户
+func (s *MemoryStore) AdminDeleteUser(userID int64) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
+
+	if userID == 1 {
+		return fmt.Errorf("无法删除超级管理员主账号")
+	}
+
+	_, err := s.db.Exec("DELETE FROM users WHERE id = ?", userID)
 	return err
 }
 
