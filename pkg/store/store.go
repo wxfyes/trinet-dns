@@ -794,12 +794,12 @@ func (s *MemoryStore) UpdateDDNS(token, ip string) (string, error) {
 		return "", fmt.Errorf("Token 无效")
 	}
 
-	parts := strings.Split(target, "_")
-	if len(parts) < 2 {
+	lastIdx := strings.LastIndex(target, "_")
+	if lastIdx <= 0 {
 		return "", fmt.Errorf("Token 配置已损坏")
 	}
-	fqdn := parts[0]
-	isp := parts[1]
+	fqdn := target[:lastIdx]
+	isp := target[lastIdx+1:]
 
 	var domain, subdomain string
 	for dom := range s.Domains {
