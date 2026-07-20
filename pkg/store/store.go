@@ -1171,11 +1171,16 @@ func (s *MemoryStore) MarkOrderPaid(orderID string, txID string) error {
 		if err != nil {
 			return err
 		}
+		log.Printf("[ORDER-PAID] 账户充值订单 [%s] 成功支付！给用户 ID [%d] 增加余额 ￥%.2f", orderID, userID, price)
 	} else {
 		// 套餐购买订单
 		var currentPlan string
 		var currentExpiresAt int64
-		_ = s.db.QueryRow("SELECT plan, expires_at FROM users WHERE id = ?", userID).Scan(&currentPlan, &currentExpiresAt)
+		_ = tx.QueryRow("SELECT COALESCE(plan, 'free'), COALESCE(expires_at, 0) FROM users WHERE id = ?", userID).Scan(&currentPlan, &currentExpiresAt)
+
+		if durationDays <= 0 {
+			durationDays = 30
+		}
 
 		var newExpiresAt int64
 		if currentPlan == plan && currentExpiresAt > now {
@@ -1188,6 +1193,7 @@ func (s *MemoryStore) MarkOrderPaid(orderID string, txID string) error {
 		if err != nil {
 			return err
 		}
+		log.Printf("[ORDER-PAID] 套餐订单 [%s] 成功支付！为用户 ID [%d] 开通/延长套餐 [%s]，新到期时间: %v", orderID, userID, plan, time.Unix(newExpiresAt, 0).Format("2006-01-02 15:04:05"))
 	}
 
 	return tx.Commit()

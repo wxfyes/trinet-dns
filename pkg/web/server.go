@@ -1388,7 +1388,8 @@ func (ws *WebServer) handleEpayNotify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if tradeStatus == "TRADE_SUCCESS" {
+	upperStatus := strings.ToUpper(tradeStatus)
+	if upperStatus == "TRADE_SUCCESS" || upperStatus == "SUCCESS" {
 		if err := ws.store.MarkOrderPaid(orderID, params["trade_no"]); err != nil {
 			log.Printf("[ERROR] Epay mark order paid failed: %s", err.Error())
 			w.Write([]byte("fail"))
