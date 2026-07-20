@@ -49,6 +49,9 @@ type CFBestIPResponse struct {
 		CU []struct {
 			IP string `json:"ip"`
 		} `json:"CU"`
+		CN []struct {
+			IP string `json:"ip"`
+		} `json:"CN"`
 	} `json:"info"`
 }
 
@@ -106,7 +109,13 @@ func (s *MemoryStore) SyncCloudflareBestIPs() {
 		ctIP = data.Info.CT[0].IP
 		cuIP = data.Info.CU[0].IP
 		cmIP = data.Info.CM[0].IP
-		defIP = ctIP // 默认线路使用电信 IP
+		
+		// 优先使用 API 中针对其他三网的 CN (三网) 优选 IP 作为默认 (DEF) 线路
+		if len(data.Info.CN) > 0 {
+			defIP = data.Info.CN[0].IP
+		} else {
+			defIP = ctIP // 如果 API 中没有提供 CN 字段，则回退使用电信 IP
+		}
 		success = true
 		break
 	}
