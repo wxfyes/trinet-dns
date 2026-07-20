@@ -1,3 +1,14 @@
+// HTML 字符安全转义防注入函数
+function escapeHTML(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // API 请求统一封装，自动注入 Authorization Token 并处理 401 未授权
 async function fetchAPI(url, options = {}) {
     const token = localStorage.getItem('trinet_token');
@@ -32,6 +43,7 @@ function checkLogin() {
     if (token) {
         loginOverlay.style.display = 'none';
         appContainer.style.display = 'flex';
+        document.documentElement.classList.add('logged-in');
         
         if (role === 'admin') {
             if (menuSettings) menuSettings.style.display = 'flex';
@@ -62,9 +74,16 @@ function checkLogin() {
                 .catch(err => console.error('自动拉取用户角色失败:', err));
         }
         
-        loadRecords();
+        // 读取 URL 中的 Hash 进行实时页面激活保持
+        const hashTab = window.location.hash.replace('#', '');
+        if (hashTab && document.getElementById(`tab-${hashTab}`)) {
+            switchTab(hashTab);
+        } else {
+            loadRecords();
+        }
         setupLogStream();
     } else {
+        document.documentElement.classList.remove('logged-in');
         loginOverlay.style.display = 'flex';
         appContainer.style.display = 'none';
         if (menuSettings) menuSettings.style.display = 'none';
@@ -278,6 +297,10 @@ async function handlePasswordSubmit(event) {
 
 // 标签页切换逻辑
 function switchTab(tabId) {
+    if (history.replaceState) {
+        history.replaceState(null, null, `#${tabId}`);
+    }
+
     // 1. 切换菜单激活状态
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach(item => {

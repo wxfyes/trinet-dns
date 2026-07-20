@@ -8,6 +8,17 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script>
+        (function() {
+            if (localStorage.getItem('trinet_token')) {
+                document.documentElement.classList.add('logged-in');
+            }
+        })();
+    </script>
+    <style>
+        html.logged-in #login-overlay { display: none !important; }
+        html.logged-in #app-container { display: flex !important; }
+    </style>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
 </head>
 <body>
