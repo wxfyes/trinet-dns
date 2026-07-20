@@ -16,6 +16,7 @@ func TestMemoryStoreSQLite(t *testing.T) {
 	if store == nil {
 		t.Fatal("Failed to create memory store")
 	}
+	defer store.Close()
 
 	// 确认加载了默认数据
 	if _, exists := store.Domains["example.com"]; !exists {
@@ -24,7 +25,7 @@ func TestMemoryStoreSQLite(t *testing.T) {
 
 	// 2. 测试添加记录并验证是否落盘
 	store.AddRecord("example.com", "api", "A", "ct", []string{"5.5.5.5"}, 300)
-	
+
 	// 在内存中查找
 	vals, ttl := store.Lookup("example.com", "api", "A", "ct")
 	if len(vals) == 0 || vals[0] != "5.5.5.5" || ttl != 300 {
@@ -37,6 +38,7 @@ func TestMemoryStoreSQLite(t *testing.T) {
 	if len(vals2) == 0 || vals2[0] != "5.5.5.5" || ttl2 != 300 {
 		t.Errorf("After reload: Expected api.example.com to resolve to 5.5.5.5, got %v", vals2)
 	}
+	defer store2.Close()
 
 	// 3. 测试删除记录
 	store2.DeleteRecord("example.com", "api", "A", "ct")
@@ -51,6 +53,7 @@ func TestMemoryStoreSQLite(t *testing.T) {
 	if len(vals4) > 0 {
 		t.Error("After reload: Expected api.example.com to be deleted in DB")
 	}
+	defer store3.Close()
 }
 
 func TestMemoryStoreMigration(t *testing.T) {
@@ -101,6 +104,7 @@ func TestMemoryStoreMigration(t *testing.T) {
 	if store == nil {
 		t.Fatal("Failed to load store with JSON path")
 	}
+	defer store.Close()
 
 	// 3. 校验账号密码是否成功迁移
 	u, p := store.GetCredentials()
@@ -130,7 +134,7 @@ func TestMemoryStoreMigration(t *testing.T) {
 }
 
 func TestMemoryStoreMultiUser(t *testing.T) {
-	dbPath := "test_multiuser.db"
+	dbPath := "test_multiuser_temp.db"
 	_ = os.Remove(dbPath)
 	defer os.Remove(dbPath)
 
@@ -138,6 +142,7 @@ func TestMemoryStoreMultiUser(t *testing.T) {
 	if store == nil {
 		t.Fatal("Failed to create memory store")
 	}
+	defer store.Close()
 
 	// 1. 测试注册用户
 	err := store.RegisterUser("user1", "pass123", "user")
@@ -237,7 +242,7 @@ func TestMemoryStoreMultiUser(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to generate DDNS token for user1: %s", err)
 	}
-	
+
 	// user2 应当看不到该 Token
 	data2_toks := store.GetUserData(u2.ID, u2.Role).Tokens
 	if _, exists := data2_toks[ddnsTok]; exists {

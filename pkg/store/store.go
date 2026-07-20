@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,9 +17,11 @@ import (
 
 // User 表示系统中的用户账号
 type User struct {
-	ID       int64  `json:"id"`
-	Username string `json:"username"`
-	Role     string `json:"role"` // "admin" 或 "user"
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	Role      string `json:"role"` // "admin" 或 "user"
+	Plan      string `json:"plan"`
+	ExpiresAt int64  `json:"expires_at"`
 }
 
 // DNSRecord 表示一条具体的 DNS 解析记录
@@ -161,13 +164,29 @@ func (s *MemoryStore) Load() error {
 		key TEXT PRIMARY KEY,
 		value TEXT
 	);
+	CREATE TABLE IF NOT EXISTS orders (
+		order_id TEXT PRIMARY KEY,
+		user_id INTEGER,
+		plan TEXT,
+		cycle TEXT,
+		price REAL,
+		payment_method TEXT,
+		status TEXT,
+		tx_id TEXT,
+		created_at INTEGER,
+		updated_at INTEGER,
+		duration_days INTEGER,
+		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
 	`
 	if _, err := s.db.Exec(query); err != nil {
 		return fmt.Errorf("failed to init db tables: %w", err)
 	}
 
-	// 执行表结构升级 (平滑升级旧数据库表增加 owner_id)
+	// 执行表结构升级 (平滑升级旧数据库表)
 	_, _ = s.db.Exec("ALTER TABLE domains ADD COLUMN owner_id INTEGER DEFAULT 1;")
+	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN plan TEXT DEFAULT 'free';")
+	_, _ = s.db.Exec("ALTER TABLE users ADD COLUMN expires_at INTEGER DEFAULT 0;")
 
 	// 检查并执行 JSON 迁移
 	if isJSON {
@@ -545,6 +564,44 @@ func (s *MemoryStore) AddRecordWithAuth(userID int64, role string, domain, subdo
 			return fmt.Errorf("无权限修改该域名解析")
 		}
 	} else {
+		if role != "admin" {
+			var plan string
+			var expiresAt int64
+			err := s.db.QueryRow("SELECT plan, expires_at FROM users WHERE id = ?", userID).Scan(&plan, &expiresAt)
+			if err != nil {
+				return fmt.Errorf("获取账户信息失败")
+			}
+
+			// 检查过期时间（非 free 套餐且已到期）
+			if plan != "free" && plan != "" && expiresAt > 0 && time.Now().Unix() > expiresAt {
+				return fmt.Errorf("您的套餐服务已到期，请前往系统充值/续费后继续添加域名！")
+			}
+
+			// 统计当前用户拥有的域名数量
+			var currentCount int
+			err = s.db.QueryRow("SELECT COUNT(*) FROM domains WHERE owner_id = ?", userID).Scan(&currentCount)
+			if err != nil {
+				return fmt.Errorf("获取已托管域名数失败")
+			}
+
+			// 获取套餐上限
+			limitStr := "1"
+			if plan == "free" || plan == "" {
+				limitStr = s.getSettingNoLock("plan_free_domain_limit", "1")
+			} else if plan == "junior" {
+				limitStr = s.getSettingNoLock("plan_junior_domain_limit", "1")
+			} else if plan == "intermediate" {
+				limitStr = s.getSettingNoLock("plan_intermediate_domain_limit", "3")
+			} else if plan == "senior" {
+				limitStr = s.getSettingNoLock("plan_senior_domain_limit", "6")
+			}
+
+			limit, _ := strconv.Atoi(limitStr)
+			if currentCount >= limit {
+				return fmt.Errorf("您的域名托管数量已达当前套餐上限 (%d 个)！请升级套餐", limit)
+			}
+		}
+
 		dom = &DomainRecords{
 			OwnerID: userID,
 			TTL:     ttl,
@@ -656,7 +713,7 @@ func (s *MemoryStore) DeleteRecordWithAuth(userID int64, role string, domain, su
 		err = tx.QueryRow("SELECT id FROM domains WHERE name = ?", domain).Scan(&domID)
 		if err == nil {
 			_, _ = tx.Exec("DELETE FROM dns_records WHERE domain_id = ? AND subdomain = ? AND type = ? AND isp = ?", domID, subdomain, qtype, isp)
-			
+
 			if len(dom.Records) == 0 {
 				delete(s.Domains, domain)
 				_, _ = tx.Exec("DELETE FROM domains WHERE id = ?", domID)
@@ -820,12 +877,12 @@ func (s *MemoryStore) AuthenticateToken(token string) (*User, error) {
 	var u User
 	var expiresAt int64
 	query := `
-	SELECT u.id, u.username, u.role, s.expires_at 
+	SELECT u.id, u.username, u.role, u.plan, u.expires_at, s.expires_at 
 	FROM user_sessions s
 	JOIN users u ON s.user_id = u.id
 	WHERE s.token = ?
 	`
-	err := s.db.QueryRow(query, token).Scan(&u.ID, &u.Username, &u.Role, &expiresAt)
+	err := s.db.QueryRow(query, token).Scan(&u.ID, &u.Username, &u.Role, &u.Plan, &u.ExpiresAt, &expiresAt)
 	if err != nil {
 		return nil, fmt.Errorf("会话 Token 无效")
 	}
@@ -946,11 +1003,13 @@ func (s *MemoryStore) DeleteDDNSToken(userID int64, role string, token string) e
 	return nil
 }
 
-// GetSetting 获取系统配置项，如果不存在则返回默认值
 func (s *MemoryStore) GetSetting(key string, defaultVal string) string {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	return s.getSettingNoLock(key, defaultVal)
+}
 
+func (s *MemoryStore) getSettingNoLock(key string, defaultVal string) string {
 	if s.db == nil {
 		return defaultVal
 	}
@@ -976,6 +1035,18 @@ func (s *MemoryStore) SetSetting(key string, val string) error {
 	return err
 }
 
+// Close 关闭底层数据库连接
+func (s *MemoryStore) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.db != nil {
+		err := s.db.Close()
+		s.db = nil
+		return err
+	}
+	return nil
+}
+
 func (s *MemoryStore) initDefaultData() {
 	s.Domains["example.com"] = &DomainRecords{
 		OwnerID: 1, // 默认为 admin 拥有
@@ -993,4 +1064,142 @@ func (s *MemoryStore) initDefaultData() {
 		},
 	}
 	s.Tokens["ddns_tok_demo123456"] = "www.example.com_ct"
+}
+
+// CreateOrder 创建充值/套餐购买订单
+func (s *MemoryStore) CreateOrder(orderID string, userID int64, plan, cycle string, price float64, payMethod string, durationDays int) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
+
+	now := time.Now().Unix()
+	query := `
+	INSERT INTO orders (order_id, user_id, plan, cycle, price, payment_method, status, tx_id, created_at, updated_at, duration_days)
+	VALUES (?, ?, ?, ?, ?, ?, 'pending', '', ?, ?, ?)
+	`
+	_, err := s.db.Exec(query, orderID, userID, plan, cycle, price, payMethod, now, now, durationDays)
+	return err
+}
+
+// GetOrder 获取订单详情
+func (s *MemoryStore) GetOrder(orderID string) (map[string]interface{}, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
+	}
+
+	var userID int64
+	var plan, cycle, payMethod, status, txID string
+	var price float64
+	var durationDays int
+	var createdAt int64
+
+	query := "SELECT user_id, plan, cycle, price, payment_method, status, tx_id, created_at, duration_days FROM orders WHERE order_id = ?"
+	err := s.db.QueryRow(query, orderID).Scan(&userID, &plan, &cycle, &price, &payMethod, &status, &txID, &createdAt, &durationDays)
+	if err != nil {
+		return nil, err
+	}
+
+	return map[string]interface{}{
+		"order_id":       orderID,
+		"user_id":        userID,
+		"plan":           plan,
+		"cycle":          cycle,
+		"price":          price,
+		"payment_method": payMethod,
+		"status":         status,
+		"tx_id":          txID,
+		"created_at":     createdAt,
+		"duration_days":  durationDays,
+	}, nil
+}
+
+// MarkOrderPaid 将订单标记为已支付，并为用户开通/续期套餐
+func (s *MemoryStore) MarkOrderPaid(orderID string, txID string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
+
+	// 1. 获取订单详情
+	var userID int64
+	var plan, status string
+	var durationDays int
+	err := s.db.QueryRow("SELECT user_id, plan, status, duration_days FROM orders WHERE order_id = ?", orderID).Scan(&userID, &plan, &status, &durationDays)
+	if err != nil {
+		return fmt.Errorf("订单不存在: %w", err)
+	}
+
+	if status == "paid" {
+		return nil // 已经处理过了，直接返回成功
+	}
+
+	// 2. 获取用户当前套餐和过期时间
+	var currentPlan string
+	var currentExpiresAt int64
+	err = s.db.QueryRow("SELECT plan, expires_at FROM users WHERE id = ?", userID).Scan(&currentPlan, &currentExpiresAt)
+	if err != nil {
+		return fmt.Errorf("获取用户信息失败: %w", err)
+	}
+
+	now := time.Now().Unix()
+	var newExpiresAt int64
+
+	// 如果用户的套餐跟订单买的套餐一致，且当前套餐未到期，则在当前过期时间基础上累加
+	if currentPlan == plan && currentExpiresAt > now {
+		newExpiresAt = currentExpiresAt + int64(durationDays*24*3600)
+	} else {
+		// 否则，从当前时间算起
+		newExpiresAt = now + int64(durationDays*24*3600)
+	}
+
+	// 3. 开始事务更新订单状态和用户权限
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 更新订单状态
+	_, err = tx.Exec("UPDATE orders SET status = 'paid', tx_id = ?, updated_at = ? WHERE order_id = ?", txID, now, orderID)
+	if err != nil {
+		return err
+	}
+
+	// 更新用户套餐与过期时间
+	_, err = tx.Exec("UPDATE users SET plan = ?, expires_at = ? WHERE id = ?", plan, newExpiresAt, userID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// IsTxIDUsed 判断 USDT Hash (TxID) 是否已经被其他订单使用过
+func (s *MemoryStore) IsTxIDUsed(txID string) (bool, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.db == nil {
+		return false, fmt.Errorf("数据库未初始化")
+	}
+
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM orders WHERE tx_id = ? AND status = 'paid'", txID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// GetDB 获取底层 SQLite 数据库连接对象
+func (s *MemoryStore) GetDB() *sql.DB {
+	return s.db
 }

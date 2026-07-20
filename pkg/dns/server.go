@@ -164,7 +164,7 @@ func (d *DNSServer) appendECSResponse(req *dns.Msg, resp *dns.Msg, clientIP net.
 	o := new(dns.OPT)
 	o.Hdr.Name = "."
 	o.Hdr.Rrtype = dns.TypeOPT
-	
+
 	respECS := new(dns.EDNS0_SUBNET)
 	respECS.Code = dns.EDNS0SUBNET
 	respECS.Family = reqECS.Family

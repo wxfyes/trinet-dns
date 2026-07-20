@@ -8,6 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
 </head>
 <body>
     <!-- 登录遮罩层 -->
@@ -28,7 +29,7 @@
                 </div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">登 录</button>
                 <div style="text-align: center; margin-top: 12px; display: none;" id="reg-link-container">
-                    <a href="javascript:void(0)" onclick="toggleLoginReg(true)" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">还没有账号？立即注册</a>
+                    <a href="javascript:void(0)" onclick="toggleLoginReg(true)" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">还没有账号？立即注册</a>
                 </div>
             </form>
             <!-- 注册表单 -->
@@ -45,9 +46,10 @@
                     <label for="register-confirm">确认密码</label>
                     <input type="password" id="register-confirm" required class="form-control" autocomplete="new-password">
                 </div>
+                <div id="cf-turnstile-container" style="margin: 12px 0; display: none; justify-content: center;"></div>
                 <button type="submit" class="btn btn-primary" style="width: 100%;">注 册</button>
                 <div style="text-align: center; margin-top: 12px;">
-                    <a href="javascript:void(0)" onclick="toggleLoginReg(false)" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">已有账号？返回登录</a>
+                    <a href="javascript:void(0)" onclick="toggleLoginReg(false)" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">已有账号？返回登录</a>
                 </div>
             </form>
         </div>
@@ -73,9 +75,17 @@
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6m12-4a9 9 0 0 1-15 6.7L3 16"></path></svg>
                     动态 DNS
                 </a>
+                <a href="#billing" class="menu-item" onclick="switchTab('billing')">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line><path d="M16 14h2M12 14h.01"></path></svg>
+                    财务中心
+                </a>
                 <a href="#logs" class="menu-item" onclick="switchTab('logs')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
                     系统日志
+                </a>
+                <a href="#settings" class="menu-item" id="menu-settings" onclick="switchTab('settings')" style="display: none;">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    系统设置
                 </a>
             </nav>
             <div class="sidebar-footer">
@@ -181,22 +191,6 @@
                                     <div class="progress-fill def-fill" id="stat-bar-fill-def" style="width: 0%"></div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- 管理员设置 (仅管理员可见) -->
-                    <div class="section-container" id="admin-settings-section" style="display: none; margin-top: 24px;">
-                        <h2 class="section-title">系统管理设置</h2>
-                        <div class="card" style="padding: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px;">
-                            <div>
-                                <h3 style="font-size: 1rem; margin-bottom: 4px;">开放用户注册</h3>
-                                <p style="color: var(--text-muted); font-size: 0.85rem;">开启后，主控登录页面将开放自服务账户注册按钮</p>
-                            </div>
-                            <label class="switch-container">
-                                <input type="checkbox" id="toggle-registration" onchange="toggleRegistrationSetting(this.checked)">
-                                <span class="switch-slider"></span>
-                            </label>
-                        </div>
                     </div>
                 </section>
 
@@ -263,6 +257,45 @@
                     </div>
                 </section>
 
+                <!-- 财务中心面板 -->
+                <section id="tab-billing" class="tab-pane">
+                    <div class="section-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+                            <div>
+                                <h2 style="margin: 0; font-size: 1.5rem;">SaaS 域名托管套餐中心</h2>
+                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">升级您的套餐，获取更多域名托管额度，尊享三网独家智能解析服务。</p>
+                            </div>
+                            <div class="user-plan-badge-container" style="background: rgba(255, 255, 255, 0.05); padding: 12px 20px; border-radius: 8px; border: 1px solid var(--border-color); text-align: right;">
+                                <div style="font-size: 0.85rem; color: var(--text-muted);">当前套餐 / 到期时间</div>
+                                <div style="font-weight: 600; font-size: 1.1rem; color: var(--primary); margin-top: 2px;" id="billing-user-plan-info">免费版 (无限期)</div>
+                                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" id="billing-user-quota-info">域名额度: 0 / 1</div>
+                            </div>
+                        </div>
+
+                        <!-- 套餐资费卡片网格 -->
+                        <div class="billing-plans-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px;" id="billing-plans-container">
+                            <!-- 由 app.js 动态渲染 -->
+                        </div>
+
+                        <!-- USDT 交易验证框 -->
+                        <div class="card" style="padding: 24px; display: none; margin-top: 24px;" id="usdt-verify-card">
+                            <h3 style="margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                                💸 USDT-TRC20 转账确认并自助激活
+                            </h3>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+                                系统支持波场 USDT-TRC20 智能合约收款，实时链上验证。请使用您的加密货币钱包向下方地址转账：<br>
+                                <strong style="color: var(--text-light); word-break: break-all;" id="usdt-pay-address">未配置收款地址</strong><br>
+                                转账金额（需精确）：<strong style="color: #ff9f43; font-size: 1.1rem;" id="usdt-pay-amount">0.00</strong> USDT。转账成功后，请输入交易哈希 (TxID) 并点击确认激活套餐：
+                            </p>
+                            <form id="usdt-verify-form" onsubmit="verifyUsdtOrder(event)" style="display: flex; gap: 12px; max-width: 600px; flex-wrap: wrap;">
+                                <input type="hidden" id="usdt-verify-order-id">
+                                <input type="text" id="usdt-verify-txid" placeholder="请输入64位交易哈希 (TxID / Transaction Hash)" required class="form-control font-mono" style="flex: 1; min-width: 250px;">
+                                <button type="submit" class="btn btn-primary" style="white-space: nowrap;">确认激活</button>
+                            </form>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- 系统日志面板 -->
                 <section id="tab-logs" class="tab-pane">
                     <div class="section-container">
@@ -272,6 +305,262 @@
                         </div>
                         <div class="log-viewport" id="log-container">
                             <!-- 实时推流展示 -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 系统设置面板 (仅管理员可见) -->
+                <section id="tab-settings" class="tab-pane">
+                    <div class="section-container">
+                        <h2 class="section-title">系统管理设置</h2>
+                        
+                        <!-- 基础配置 -->
+                        <div class="card" style="padding: 24px; margin-bottom: 24px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                                ⚙️ 基础服务配置
+                            </h3>
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 0.95rem;">开放自服务用户注册</h4>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">启用后，主控登录页会显示“立即注册”入口</p>
+                                </div>
+                                <label class="switch-container">
+                                    <input type="checkbox" id="setting-open-reg" onchange="updateBasicSetting('open_registration', this.checked)">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Cloudflare Turnstile 人机验证 -->
+                        <div class="card" style="padding: 24px; margin-bottom: 24px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                                🛡️ Cloudflare Turnstile 防刷保护
+                            </h3>
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 0.95rem;">启用 Turnstile 验证</h4>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">防范恶意的注册机刷库，自动识别并阻止人机模拟</p>
+                                </div>
+                                <label class="switch-container">
+                                    <input type="checkbox" id="setting-cf-enabled" onchange="updateBasicSetting('cf_turnstile_enabled', this.checked)">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <form id="setting-cf-form" onsubmit="saveTurnstileKeys(event)">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="setting-cf-site-key">Site Key (前端网站密钥)</label>
+                                        <input type="text" id="setting-cf-site-key" placeholder="例如: 0x4AAAAAAAB..." class="form-control font-mono">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="setting-cf-secret-key">Secret Key (后端通信密钥)</label>
+                                        <input type="password" id="setting-cf-secret-key" placeholder="例如: 0x4AAAAAAAB..." class="form-control font-mono">
+                                    </div>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="margin-top: 8px;">保存 Turnstile 密钥</button>
+                            </form>
+                        </div>
+
+                        <!-- 节点同步及集群配置 -->
+                        <div class="card" style="padding: 24px; margin-bottom: 24px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                                🔗 节点同步与集群配置
+                            </h3>
+                            <div class="form-group">
+                                <label>集群节点同步 Token (Sync Token)</label>
+                                <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                    <input type="text" id="setting-sync-token" readonly class="form-control font-mono" style="background: rgba(255,255,255,0.05); color: var(--text-light); border-color: transparent;">
+                                    <button class="btn btn-outline" onclick="copyToClipboard('setting-sync-token')">复制</button>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>备用节点一键配置 API 地址 (Sync URL)</label>
+                                <div style="display: flex; gap: 8px; margin-top: 4px;">
+                                    <input type="text" id="setting-sync-url" readonly class="form-control font-mono" style="background: rgba(255,255,255,0.05); color: var(--text-light); border-color: transparent;">
+                                    <button class="btn btn-outline" onclick="copyToClipboard('setting-sync-url')">复制</button>
+                                </div>
+                            </div>
+                            <form id="setting-ns-form" onsubmit="saveNSNodes(event)">
+                                <div class="form-group">
+                                    <label for="setting-ns-nodes">集群 NS 域名解析节点 (一行一个)</label>
+                                    <textarea id="setting-ns-nodes" class="form-control font-mono" style="height: 100px; resize: vertical; margin-top: 4px;" required placeholder="例如:&#10;ns1.trinet-dns.com&#10;ns2.trinet-dns.com"></textarea>
+                                </div>
+                                <button type="submit" class="btn btn-primary" style="margin-top: 8px;">保存 NS 解析节点</button>
+                            </form>
+                        </div>
+
+                        <!-- 域名套餐配置 -->
+                        <div class="card" style="padding: 24px; margin-bottom: 24px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                                👑 域名套餐与额度配置
+                            </h3>
+                            <form id="setting-plans-form" onsubmit="savePlanSettings(event)">
+                                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">免费版套餐限额</h4>
+                                    <div class="form-group" style="max-width: 300px;">
+                                        <label for="setting-plan-free-limit">免费版域名限额 (个)</label>
+                                        <input type="number" id="setting-plan-free-limit" class="form-control" required min="0">
+                                    </div>
+                                </div>
+
+                                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">初级套餐设置</h4>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="setting-plan-junior-name">套餐名称</label>
+                                            <input type="text" id="setting-plan-junior-name" class="form-control" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-junior-limit">域名托管限制 (个)</label>
+                                            <input type="number" id="setting-plan-junior-limit" class="form-control" required min="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-row" style="margin-top: 12px;">
+                                        <div class="form-group">
+                                            <label for="setting-plan-junior-monthly">月付价格 (元)</label>
+                                            <input type="number" id="setting-plan-junior-monthly" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-junior-quarterly">季付价格 (元)</label>
+                                            <input type="number" id="setting-plan-junior-quarterly" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-junior-semiannually">半年付价格 (元)</label>
+                                            <input type="number" id="setting-plan-junior-semiannually" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-junior-annually">年付价格 (元)</label>
+                                            <input type="number" id="setting-plan-junior-annually" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">中级套餐设置</h4>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="setting-plan-intermediate-name">套餐名称</label>
+                                            <input type="text" id="setting-plan-intermediate-name" class="form-control" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-intermediate-limit">域名托管限制 (个)</label>
+                                            <input type="number" id="setting-plan-intermediate-limit" class="form-control" required min="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-row" style="margin-top: 12px;">
+                                        <div class="form-group">
+                                            <label for="setting-plan-intermediate-monthly">月付价格 (元)</label>
+                                            <input type="number" id="setting-plan-intermediate-monthly" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-intermediate-quarterly">季付价格 (元)</label>
+                                            <input type="number" id="setting-plan-intermediate-quarterly" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-intermediate-semiannually">半年付价格 (元)</label>
+                                            <input type="number" id="setting-plan-intermediate-semiannually" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-intermediate-annually">年付价格 (元)</label>
+                                            <input type="number" id="setting-plan-intermediate-annually" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="margin-bottom: 16px;">
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">高级套餐设置</h4>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="setting-plan-senior-name">套餐名称</label>
+                                            <input type="text" id="setting-plan-senior-name" class="form-control" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-senior-limit">域名托管限制 (个)</label>
+                                            <input type="number" id="setting-plan-senior-limit" class="form-control" required min="0">
+                                        </div>
+                                    </div>
+                                    <div class="form-row" style="margin-top: 12px;">
+                                        <div class="form-group">
+                                            <label for="setting-plan-senior-monthly">月付价格 (元)</label>
+                                            <input type="number" id="setting-plan-senior-monthly" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-senior-quarterly">季付价格 (元)</label>
+                                            <input type="number" id="setting-plan-senior-quarterly" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-senior-semiannually">半年付价格 (元)</label>
+                                            <input type="number" id="setting-plan-senior-semiannually" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-plan-senior-annually">年付价格 (元)</label>
+                                            <input type="number" id="setting-plan-senior-annually" class="form-control" required min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">保存套餐与资费设置</button>
+                            </form>
+                        </div>
+
+                        <!-- 支付接口与网关配置 -->
+                        <div class="card" style="padding: 24px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                                💳 支付接口与网关配置
+                            </h3>
+                            <form id="setting-payments-form" onsubmit="savePaymentSettings(event)">
+                                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">易支付 (Epay) 配置</h4>
+                                    <div class="form-group">
+                                        <label for="setting-epay-url">支付网关 API 地址</label>
+                                        <input type="url" id="setting-epay-url" placeholder="例如: https://pay.example.com/" class="form-control font-mono">
+                                    </div>
+                                    <div class="form-row" style="margin-top: 12px;">
+                                        <div class="form-group">
+                                            <label for="setting-epay-pid">商户 ID (Partner ID)</label>
+                                            <input type="text" id="setting-epay-pid" placeholder="例如: 1000" class="form-control font-mono">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-epay-key">商户密钥 (Secret Key)</label>
+                                            <input type="password" id="setting-epay-key" placeholder="易支付 MD5 密钥" class="form-control font-mono">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">MGate 网关配置</h4>
+                                    <div class="form-group">
+                                        <label for="setting-mgate-url">MGate 接口 URL</label>
+                                        <input type="url" id="setting-mgate-url" placeholder="例如: https://mgate.example.com" class="form-control font-mono">
+                                    </div>
+                                    <div class="form-row" style="margin-top: 12px;">
+                                        <div class="form-group">
+                                            <label for="setting-mgate-appid">应用 ID (App ID)</label>
+                                            <input type="text" id="setting-mgate-appid" placeholder="MGate App ID" class="form-control font-mono">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-mgate-key">应用密钥 (App Secret)</label>
+                                            <input type="password" id="setting-mgate-key" placeholder="MGate Secret Key" class="form-control font-mono">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div style="margin-bottom: 16px;">
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">USDT (TRC-20) 收款配置</h4>
+                                    <div class="form-row">
+                                        <div class="form-group" style="flex: 2;">
+                                            <label for="setting-usdt-address">USDT 收款钱包地址 (TRC-20 地址)</label>
+                                            <input type="text" id="setting-usdt-address" placeholder="以 T 开头的 34 位波场钱包地址" class="form-control font-mono">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="setting-usdt-rate">USDT 对人民币汇率 (CNY)</label>
+                                            <input type="number" id="setting-usdt-rate" placeholder="例如: 7.00" class="form-control" min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">保存支付网关设置</button>
+                            </form>
                         </div>
                     </div>
                 </section>

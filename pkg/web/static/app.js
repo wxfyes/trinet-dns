@@ -16,19 +16,34 @@ async function fetchAPI(url, options = {}) {
     return res;
 }
 
+// 全局配置与 Turnstile 状态
+let serverSettings = { open_registration: false, cf_turnstile_enabled: false, cf_turnstile_site_key: '' };
+let turnstileWidgetId = null;
+let turnstileToken = '';
+
 // 检查登录状态并切换界面
 function checkLogin() {
     const token = localStorage.getItem('trinet_token');
+    const role = localStorage.getItem('trinet_role');
     const loginOverlay = document.getElementById('login-overlay');
     const appContainer = document.getElementById('app-container');
+    const menuSettings = document.getElementById('menu-settings');
     if (token) {
         loginOverlay.style.display = 'none';
         appContainer.style.display = 'flex';
+        
+        if (role === 'admin') {
+            if (menuSettings) menuSettings.style.display = 'block';
+        } else {
+            if (menuSettings) menuSettings.style.display = 'none';
+        }
+        
         loadRecords();
         setupLogStream();
     } else {
         loginOverlay.style.display = 'flex';
         appContainer.style.display = 'none';
+        if (menuSettings) menuSettings.style.display = 'none';
         if (logSource) {
             logSource.close();
             logSource = null;
@@ -43,6 +58,7 @@ async function initLoginConfig() {
         const res = await fetch('/api/login');
         if (res.ok) {
             const data = await res.json();
+            serverSettings = data; // 保存全局变量
             const regLink = document.getElementById('reg-link-container');
             if (data.open_registration) {
                 regLink.style.display = 'block';
@@ -61,17 +77,42 @@ function toggleLoginReg(showReg) {
     const registerForm = document.getElementById('register-form');
     const title = document.getElementById('login-box-title');
     const desc = document.getElementById('login-box-desc');
+    const turnstileContainer = document.getElementById('cf-turnstile-container');
     
     if (showReg) {
         loginForm.style.display = 'none';
         registerForm.style.display = 'block';
         title.innerText = '用户注册';
         desc.innerText = '创建一个新的 TriNet 解析账户';
+        
+        if (serverSettings.cf_turnstile_enabled && serverSettings.cf_turnstile_site_key) {
+            if (turnstileContainer) turnstileContainer.style.display = 'flex';
+            if (window.turnstile) {
+                turnstileToken = '';
+                if (turnstileWidgetId !== null) {
+                    turnstile.reset(turnstileWidgetId);
+                } else {
+                    try {
+                        turnstileWidgetId = turnstile.render('#cf-turnstile-container', {
+                            sitekey: serverSettings.cf_turnstile_site_key,
+                            callback: function(token) {
+                                turnstileToken = token;
+                            }
+                        });
+                    } catch (e) {
+                        console.error("Turnstile render error:", e);
+                    }
+                }
+            }
+        } else {
+            if (turnstileContainer) turnstileContainer.style.display = 'none';
+        }
     } else {
         loginForm.style.display = 'block';
         registerForm.style.display = 'none';
         title.innerText = 'TriNet DNS';
         desc.innerText = '三网智能解析控制台';
+        if (turnstileContainer) turnstileContainer.style.display = 'none';
     }
 }
 
@@ -91,10 +132,11 @@ async function handleLoginSubmit(event) {
         if (res.ok) {
             const data = await res.json();
             localStorage.setItem('trinet_token', data.token);
+            localStorage.setItem('trinet_role', data.role || 'user'); // 保存 role 字段
             checkLogin();
         } else {
             const data = await res.json();
-            alert(data.error || '登录失败，请检查用户名和密码');
+            alert(data.error || '登录失败，请检查用户名 and 密码');
         }
     } catch (err) {
         alert('登录失败，无法连接到服务器');
@@ -113,11 +155,16 @@ async function handleRegisterSubmit(event) {
         return;
     }
 
+    if (serverSettings.cf_turnstile_enabled && !turnstileToken) {
+        alert('请先完成人机身份验证！');
+        return;
+    }
+
     try {
         const res = await fetch('/api/register', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ username, password, cf_token: turnstileToken })
         });
 
         const data = await res.json();
@@ -126,6 +173,10 @@ async function handleRegisterSubmit(event) {
             toggleLoginReg(false);
         } else {
             alert(data.error || '注册失败，请稍后重试');
+            if (window.turnstile && turnstileWidgetId !== null) {
+                turnstile.reset(turnstileWidgetId);
+                turnstileToken = '';
+            }
         }
     } catch (err) {
         alert('注册失败，无法连接到服务器');
@@ -146,6 +197,7 @@ async function logout() {
         }
     }
     localStorage.removeItem('trinet_token');
+    localStorage.removeItem('trinet_role');
     checkLogin();
 }
 
@@ -227,7 +279,9 @@ function switchTab(tabId) {
         'dashboard': '控制台',
         'records': '解析记录',
         'ddns': '动态 DNS 配置',
-        'logs': '系统运行日志'
+        'billing': '财务中心',
+        'logs': '系统运行日志',
+        'settings': '系统管理设置'
     };
     document.getElementById('page-title').innerText = titleMap[tabId] || '控制台';
 
@@ -236,6 +290,10 @@ function switchTab(tabId) {
         loadRecords();
     } else if (tabId === 'ddns') {
         loadDDNSTable();
+    } else if (tabId === 'settings') {
+        loadSettingsPage();
+    } else if (tabId === 'billing') {
+        loadBillingPage();
     }
 }
 
@@ -290,7 +348,6 @@ async function loadRecords() {
         renderRecordsTable(globalData);
         updateDashboardStats(globalData);
         loadSysStats();
-        loadAdminSettings();
     } catch (err) {
         console.error('加载记录失败:', err);
     }
@@ -707,55 +764,527 @@ window.addEventListener('DOMContentLoaded', () => {
     checkLogin();
 });
 
-// 获取系统注册配置（仅对管理员可见）
-async function loadAdminSettings() {
+// 获取并渲染系统设置页面（包含所有管理员配置项）
+// 获取并渲染系统设置页面（包含所有管理员配置项）
+async function loadSettingsPage() {
     try {
         const res = await fetchAPI('/api/admin/settings');
-        const adminSection = document.getElementById('admin-settings-section');
-        if (res.ok) {
-            const data = await res.json();
-            if (adminSection) {
-                adminSection.style.display = 'block';
-            }
-            const toggleInput = document.getElementById('toggle-registration');
-            if (toggleInput) {
-                toggleInput.checked = !!data.open_registration;
-            }
-        } else {
-            if (adminSection) {
-                adminSection.style.display = 'none';
-            }
+        if (!res.ok) {
+            alert('获取系统配置失败，您可能没有管理员权限！');
+            return;
         }
+
+        const data = await res.json();
+
+        // 1. 设置自服务注册开关
+        const openRegEl = document.getElementById('setting-open-reg');
+        if (openRegEl) {
+            openRegEl.checked = !!data.open_registration;
+        }
+
+        // 2. 设置 Cloudflare Turnstile 配置
+        const cfEnabledEl = document.getElementById('setting-cf-enabled');
+        if (cfEnabledEl) {
+            cfEnabledEl.checked = !!data.cf_turnstile_enabled;
+        }
+        const cfSiteKeyEl = document.getElementById('setting-cf-site-key');
+        if (cfSiteKeyEl) {
+            cfSiteKeyEl.value = data.cf_turnstile_site_key || '';
+        }
+        const cfSecretKeyEl = document.getElementById('setting-cf-secret-key');
+        if (cfSecretKeyEl) {
+            cfSecretKeyEl.value = data.cf_turnstile_secret_key || '';
+        }
+
+        // 3. 设置节点同步信息
+        const syncTokenEl = document.getElementById('setting-sync-token');
+        if (syncTokenEl) {
+            syncTokenEl.value = data.sync_token || '';
+        }
+        const syncUrlEl = document.getElementById('setting-sync-url');
+        if (syncUrlEl) {
+            syncUrlEl.value = `${window.location.protocol}//${window.location.host}/api/sync`;
+        }
+        const nsNodesEl = document.getElementById('setting-ns-nodes');
+        if (nsNodesEl) {
+            nsNodesEl.value = data.ns_nodes ? data.ns_nodes.split(',').join('\n') : '';
+        }
+
+        // 4. 设置域名套餐配置信息
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val !== undefined ? val : '';
+        };
+        setVal('setting-plan-free-limit', data.plan_free_domain_limit);
+        
+        setVal('setting-plan-junior-name', data.plan_junior_name);
+        setVal('setting-plan-junior-limit', data.plan_junior_limit);
+        setVal('setting-plan-junior-monthly', data.plan_junior_price_monthly);
+        setVal('setting-plan-junior-quarterly', data.plan_junior_price_quarterly);
+        setVal('setting-plan-junior-semiannually', data.plan_junior_price_semiannually);
+        setVal('setting-plan-junior-annually', data.plan_junior_price_annually);
+
+        setVal('setting-plan-intermediate-name', data.plan_intermediate_name);
+        setVal('setting-plan-intermediate-limit', data.plan_intermediate_limit);
+        setVal('setting-plan-intermediate-monthly', data.plan_intermediate_price_monthly);
+        setVal('setting-plan-intermediate-quarterly', data.plan_intermediate_price_quarterly);
+        setVal('setting-plan-intermediate-semiannually', data.plan_intermediate_price_semiannually);
+        setVal('setting-plan-intermediate-annually', data.plan_intermediate_price_annually);
+
+        setVal('setting-plan-senior-name', data.plan_senior_name);
+        setVal('setting-plan-senior-limit', data.plan_senior_limit);
+        setVal('setting-plan-senior-monthly', data.plan_senior_price_monthly);
+        setVal('setting-plan-senior-quarterly', data.plan_senior_price_quarterly);
+        setVal('setting-plan-senior-semiannually', data.plan_senior_price_semiannually);
+        setVal('setting-plan-senior-annually', data.plan_senior_price_annually);
+
+        // 5. 设置支付配置信息
+        setVal('setting-epay-url', data.epay_api_url);
+        setVal('setting-epay-pid', data.epay_partner_id);
+        setVal('setting-epay-key', data.epay_secret_key);
+
+        setVal('setting-mgate-url', data.mgate_api_url);
+        setVal('setting-mgate-appid', data.mgate_app_id);
+        setVal('setting-mgate-key', data.mgate_secret_key);
+
+        setVal('setting-usdt-address', data.usdt_trc20_address);
+        setVal('setting-usdt-rate', data.usdt_cny_rate);
+
     } catch (err) {
-        console.error('获取管理员设置失败:', err);
+        console.error('加载设置页面失败:', err);
     }
 }
 
-// 修改开放注册设置
-async function toggleRegistrationSetting(enabled) {
+// 保存 NS 解析节点
+async function saveNSNodes(event) {
+    event.preventDefault();
+    const rawVal = document.getElementById('setting-ns-nodes').value.trim();
+    // 转换为逗号分隔
+    const ns_nodes = rawVal ? rawVal.split('\n').map(s => s.trim()).filter(s => s).join(',') : '';
+
     try {
         const res = await fetchAPI('/api/admin/settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ open_registration: enabled })
+            body: JSON.stringify({ ns_nodes })
         });
         if (res.ok) {
-            const data = await res.json();
-            alert(`已成功${enabled ? '开启' : '关闭'}开放注册功能！`);
+            alert('NS 解析节点保存成功！');
+            loadSettingsPage();
         } else {
             const data = await res.json();
-            alert('修改失败: ' + (data.error || '未知错误'));
-            // 恢复开关状态
-            const toggleInput = document.getElementById('toggle-registration');
-            if (toggleInput) {
-                toggleInput.checked = !enabled;
-            }
+            alert('保存失败: ' + (data.error || '未知错误'));
         }
     } catch (err) {
-        alert('修改失败: ' + err.message);
-        const toggleInput = document.getElementById('toggle-registration');
-        if (toggleInput) {
-            toggleInput.checked = !enabled;
+        alert('保存失败: ' + err.message);
+    }
+}
+
+// 保存套餐与资费设置
+async function savePlanSettings(event) {
+    event.preventDefault();
+    const getVal = (id) => document.getElementById(id).value.trim();
+    const getFloatVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+    const getIntVal = (id) => parseInt(document.getElementById(id).value) || 0;
+
+    const payload = {
+        plan_free_domain_limit: getIntVal('setting-plan-free-limit'),
+        
+        plan_junior_name: getVal('setting-plan-junior-name'),
+        plan_junior_domain_limit: getIntVal('setting-plan-junior-limit'),
+        plan_junior_price_monthly: getFloatVal('setting-plan-junior-monthly'),
+        plan_junior_price_quarterly: getFloatVal('setting-plan-junior-quarterly'),
+        plan_junior_price_semiannually: getFloatVal('setting-plan-junior-semiannually'),
+        plan_junior_price_annually: getFloatVal('setting-plan-junior-annually'),
+
+        plan_intermediate_name: getVal('setting-plan-intermediate-name'),
+        plan_intermediate_domain_limit: getIntVal('setting-plan-intermediate-limit'),
+        plan_intermediate_price_monthly: getFloatVal('setting-plan-intermediate-monthly'),
+        plan_intermediate_price_quarterly: getFloatVal('setting-plan-intermediate-quarterly'),
+        plan_intermediate_price_semiannually: getFloatVal('setting-plan-intermediate-semiannually'),
+        plan_intermediate_price_annually: getFloatVal('setting-plan-intermediate-annually'),
+
+        plan_senior_name: getVal('setting-plan-senior-name'),
+        plan_senior_domain_limit: getIntVal('setting-plan-senior-limit'),
+        plan_senior_price_monthly: getFloatVal('setting-plan-senior-monthly'),
+        plan_senior_price_quarterly: getFloatVal('setting-plan-senior-quarterly'),
+        plan_senior_price_semiannually: getFloatVal('setting-plan-senior-semiannually'),
+        plan_senior_price_annually: getFloatVal('setting-plan-senior-annually')
+    };
+
+    try {
+        const res = await fetchAPI('/api/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            alert('域名套餐与资费设置保存成功！');
+            loadSettingsPage();
+        } else {
+            const data = await res.json();
+            alert('保存失败: ' + (data.error || '未知错误'));
         }
+    } catch (err) {
+        alert('保存失败: ' + err.message);
+    }
+}
+
+// 保存支付网关设置
+async function savePaymentSettings(event) {
+    event.preventDefault();
+    const getVal = (id) => document.getElementById(id).value.trim();
+    const getFloatVal = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+    const payload = {
+        epay_api_url: getVal('setting-epay-url'),
+        epay_partner_id: getVal('setting-epay-pid'),
+        epay_secret_key: getVal('setting-epay-key'),
+
+        mgate_api_url: getVal('setting-mgate-url'),
+        mgate_app_id: getVal('setting-mgate-appid'),
+        mgate_secret_key: getVal('setting-mgate-key'),
+
+        usdt_trc20_address: getVal('setting-usdt-address'),
+        usdt_cny_rate: getFloatVal('setting-usdt-rate')
+    };
+
+    try {
+        const res = await fetchAPI('/api/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            alert('支付网关与收款地址设置保存成功！');
+            loadSettingsPage();
+        } else {
+            const data = await res.json();
+            alert('保存失败: ' + (data.error || '未知错误'));
+        }
+    } catch (err) {
+        alert('保存失败: ' + err.message);
+    }
+}
+
+// 快速修改基础配置（比如注册开关、验证开关）
+async function updateBasicSetting(key, enabled) {
+    try {
+        const payload = {};
+        payload[key] = enabled;
+
+        const res = await fetchAPI('/api/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            let desc = '';
+            if (key === 'open_registration') desc = '自服务用户注册';
+            if (key === 'cf_turnstile_enabled') desc = 'Cloudflare Turnstile 验证保护';
+            alert(`已成功${enabled ? '开启' : '关闭'} ${desc} 功能！`);
+        } else {
+            const data = await res.json();
+            alert('修改配置失败: ' + (data.error || '未知错误'));
+            // 恢复 UI 状态
+            loadSettingsPage();
+        }
+    } catch (err) {
+        alert('修改配置失败: ' + err.message);
+        loadSettingsPage();
+    }
+}
+
+// 保存 Turnstile Site Key & Secret Key
+async function saveTurnstileKeys(event) {
+    event.preventDefault();
+    const siteKey = document.getElementById('setting-cf-site-key').value.trim();
+    const secretKey = document.getElementById('setting-cf-secret-key').value.trim();
+
+    try {
+        const res = await fetchAPI('/api/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cf_turnstile_site_key: siteKey,
+                cf_turnstile_secret_key: secretKey
+            })
+        });
+
+        if (res.ok) {
+            alert('Cloudflare Turnstile 密钥保存成功！');
+            loadSettingsPage();
+        } else {
+            const data = await res.json();
+            alert('保存失败: ' + (data.error || '未知错误'));
+        }
+    } catch (err) {
+        alert('保存失败: ' + err.message);
+    }
+}
+
+// 辅助复制文本工具
+function copyToClipboard(inputId) {
+    const inputEl = document.getElementById(inputId);
+    if (!inputEl) return;
+    
+    inputEl.select();
+    inputEl.setSelectionRange(0, 99999); // 适配手机端
+
+    try {
+        navigator.clipboard.writeText(inputEl.value);
+        alert('已成功复制到剪贴板！');
+    } catch (err) {
+        // 降级使用 execCommand
+        try {
+            document.execCommand('copy');
+            alert('已成功复制到剪贴板！');
+        } catch (e) {
+            alert('复制失败，请手动选中并复制。');
+        }
+    }
+}
+
+// 财务与账单套餐中心初始化与加载
+async function loadBillingPage() {
+    try {
+        const res = await fetchAPI('/api/user/billing');
+        if (!res.ok) {
+            alert('获取账单信息失败，请稍后重试');
+            return;
+        }
+
+        const data = await res.json();
+
+        // 1. 渲染当前套餐与配额信息
+        const planNameMap = {
+            'free': '免费版',
+            'junior': '初级套餐',
+            'intermediate': '中级套餐',
+            'senior': '高级套餐'
+        };
+
+        const currentPlan = planNameMap[data.plan] || data.plan || '免费版';
+        let expiresDesc = '无限期';
+        if (data.expires_at > 0) {
+            expiresDesc = new Date(data.expires_at * 1000).toLocaleString();
+            if (Date.now() / 1000 > data.expires_at) {
+                expiresDesc += ' (已到期)';
+            }
+        }
+
+        const billingInfoEl = document.getElementById('billing-user-plan-info');
+        if (billingInfoEl) {
+            billingInfoEl.innerText = `${currentPlan} (${expiresDesc})`;
+        }
+        const quotaInfoEl = document.getElementById('billing-user-quota-info');
+        if (quotaInfoEl) {
+            quotaInfoEl.innerText = `域名额度: ${data.domain_count} / ${data.domain_limit}`;
+        }
+
+        // 2. 渲染可购买套餐卡片
+        const container = document.getElementById('billing-plans-container');
+        if (!container) return;
+        container.innerHTML = '';
+
+        if (!data.plans || data.plans.length === 0) {
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px 0;">系统暂无配置计费套餐。</div>';
+            return;
+        }
+
+        data.plans.forEach(p => {
+            // 构造购买套餐卡片 HTML
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style = 'padding: 24px; display: flex; flex-direction: column; justify-content: space-between; border-top: 4px solid var(--primary-color); position: relative;';
+
+            // 是否当前套餐
+            if (data.plan === p.id) {
+                const badge = document.createElement('div');
+                badge.innerText = '当前使用中';
+                badge.style = 'position: absolute; top: 12px; right: 12px; font-size: 0.75rem; background: var(--primary-color); color: #fff; padding: 2px 8px; border-radius: 4px; font-weight: 600;';
+                card.appendChild(badge);
+            }
+
+            // 价格 cycle 选项 select
+            let cycleSelectOptions = '';
+            const cycleNames = {
+                'monthly': '按月付',
+                'quarterly': '按季付',
+                'semiannually': '每半年付',
+                'annually': '按年付'
+            };
+            const cycleMonths = {
+                'monthly': '/月',
+                'quarterly': '/季',
+                'semiannually': '/半年',
+                'annually': '/年'
+            };
+
+            // 过滤支持的周期价格，默认显示第一个
+            let defaultCycle = '';
+            for (let c in p.prices) {
+                if (parseFloat(p.prices[c]) >= 0) {
+                    if (!defaultCycle) defaultCycle = c;
+                    cycleSelectOptions += `<option value="${c}" data-price="${p.prices[c]}">${cycleNames[c]} - ￥${p.prices[c]}${cycleMonths[c]}</option>`;
+                }
+            }
+
+            // 构建支付按钮，如果配置了对应的支付网关
+            let payButtonsHTML = '';
+            if (data.payment_methods) {
+                if (data.payment_methods.epay) {
+                    payButtonsHTML += `<button class="btn btn-primary" style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'epay')">
+                        💳 线上担保支付 (易支付)
+                    </button>`;
+                }
+                if (data.payment_methods.mgate) {
+                    payButtonsHTML += `<button class="btn btn-outline" style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'mgate')">
+                        🚀 快捷微信/支付宝 (MGate)
+                    </button>`;
+                }
+                if (data.payment_methods.usdt) {
+                    payButtonsHTML += `<button class="btn btn-outline" style="margin-top: 10px; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; border-color: #26a17b; color: #26a17b;" onclick="placeOrder('${p.id}', '${p.id}-cycle-select', 'usdt')">
+                        🟢 自动链上对账 (USDT-TRC20)
+                    </button>`;
+                }
+            }
+
+            if (!payButtonsHTML) {
+                payButtonsHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 15px;">系统管理员暂未配置支付网关。</div>`;
+            }
+
+            card.innerHTML += `
+                <div>
+                    <h3 style="margin: 0; font-size: 1.2rem; color: var(--text-light);">${p.name}</h3>
+                    <div style="font-size: 2rem; font-weight: 700; color: var(--primary-color); margin: 16px 0 8px 0;" id="${p.id}-price-display">
+                        ￥${p.prices[defaultCycle] || '0'}
+                    </div>
+                    <ul style="padding-left: 20px; color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; margin-bottom: 20px;">
+                        <li>支持托管域名数：<strong>${p.domain_limit}</strong> 个</li>
+                        <li>独立智能三网 DNS 解析线路</li>
+                        <li>提供专业 DDNS 客户端动态更新密钥</li>
+                        <li>极速解析响应 (毫秒级)</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="form-group" style="margin-bottom: 12px;">
+                        <label style="font-size: 0.8rem; color: var(--text-muted);">选择订阅结算周期</label>
+                        <select id="${p.id}-cycle-select" class="form-control" style="margin-top: 4px;" onchange="updatePriceDisplay('${p.id}', this)">
+                            ${cycleSelectOptions}
+                        </select>
+                    </div>
+                    ${payButtonsHTML}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+    } catch (err) {
+        console.error('加载财务中心失败:', err);
+    }
+}
+
+// 当用户在下拉选择周期时，更新卡片价格大字显示
+function updatePriceDisplay(planId, selectEl) {
+    const option = selectEl.options[selectEl.selectedIndex];
+    const price = option.getAttribute('data-price');
+    const priceDisplay = document.getElementById(`${planId}-price-display`);
+    if (priceDisplay) {
+        priceDisplay.innerText = `￥${price}`;
+    }
+}
+
+// 用户发起购买下单
+async function placeOrder(planId, selectId, method) {
+    const selectEl = document.getElementById(selectId);
+    if (!selectEl) return;
+    const cycle = selectEl.value;
+
+    const confirmBuy = confirm(`您确认要订购【${planId}】套餐吗？`);
+    if (!confirmBuy) return;
+
+    try {
+        const res = await fetchAPI('/api/user/billing/order', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                plan: planId,
+                cycle: cycle,
+                payment_method: method
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            alert('创建订单失败: ' + (data.error || '未知错误'));
+            return;
+        }
+
+        if (method === 'usdt') {
+            // 显示 USDT 转账验证表单卡片
+            const usdtCard = document.getElementById('usdt-verify-card');
+            if (usdtCard) {
+                usdtCard.style.display = 'block';
+                document.getElementById('usdt-pay-address').innerText = data.usdt_trc20_address;
+                document.getElementById('usdt-pay-amount').innerText = data.price_usdt;
+                document.getElementById('usdt-verify-order-id').value = data.order_id;
+                document.getElementById('usdt-verify-txid').value = '';
+                
+                // 滚动到该位置
+                usdtCard.scrollIntoView({ behavior: 'smooth' });
+                alert(`订单创建成功！\n请向地址: ${data.usdt_trc20_address}\n转账精确保留2位的 ${data.price_usdt} USDT。然后在此页面下方输入 TxID 进行对账激活。`);
+            }
+        } else {
+            // Epay or MGate，重定向到支付链接
+            if (data.pay_url) {
+                alert('正在为您跳转到微信/支付宝支付收银台，请在支付完成后返回控制台。');
+                window.location.href = data.pay_url;
+            } else {
+                alert('订单创建成功，但未获取到支付跳转链接，请联系系统管理员。');
+            }
+        }
+
+    } catch (err) {
+        alert('创建订单失败: ' + err.message);
+    }
+}
+
+// 提交 USDT 订单确认激活
+async function verifyUsdtOrder(event) {
+    event.preventDefault();
+    const orderId = document.getElementById('usdt-verify-order-id').value;
+    const txId = document.getElementById('usdt-verify-txid').value.trim();
+
+    if (!orderId || !txId) {
+        alert('参数不完整，请重新检查下单。');
+        return;
+    }
+
+    try {
+        const res = await fetchAPI('/api/user/billing/order/verify-usdt', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                order_id: orderId,
+                tx_id: txId
+            })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            alert('恭喜！链上对账验证成功，您的套餐已成功激活升级！');
+            // 隐藏 USDT 表单
+            const usdtCard = document.getElementById('usdt-verify-card');
+            if (usdtCard) usdtCard.style.display = 'none';
+            // 重新刷新页面以更新套餐状态
+            loadBillingPage();
+        } else {
+            alert('对账验证失败: ' + (data.error || '未知错误'));
+        }
+    } catch (err) {
+        alert('对账验证失败: ' + err.message);
     }
 }

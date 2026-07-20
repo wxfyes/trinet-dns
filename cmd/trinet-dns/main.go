@@ -22,7 +22,7 @@ func main() {
 	dnsAddr := flag.String("dns-addr", ":53", "DNS 服务监听地址 (UDP)")
 	webAddr := flag.String("web-addr", ":80", "Web 后台/API 服务监听地址")
 	dataPath := flag.String("data-path", "trinet-records.json", "解析数据持久化 JSON 文件路径")
-	
+
 	// Web 后台用户名与密码
 	webUser := flag.String("web-user", "admin", "Web 管理面板登录用户名")
 	webPass := flag.String("web-pass", "admin123", "Web 管理面板登录密码")
