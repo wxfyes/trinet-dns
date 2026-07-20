@@ -107,10 +107,23 @@ install_trinet() {
     DEFAULT_TOKEN=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 16 | head -n 1)
     read -p "请输入节点同步安全 Token (默认随机生成: $DEFAULT_TOKEN): " MASTER_SYNC_TOKEN
     MASTER_SYNC_TOKEN="${MASTER_SYNC_TOKEN:-$DEFAULT_TOKEN}"
+
+    # 3. 是否开启开放注册
+    read -p "是否开启自服务用户开放注册功能 (y/N, 默认不开启): " CHOOSE_OPEN_REG
+    CHOOSE_OPEN_REG="${CHOOSE_OPEN_REG:-n}"
     
     # 保存配置
     echo "$MASTER_SYNC_TOKEN" > "$CONF_DIR/sync_token"
     echo "$MASTER_NS_NODES" > "$CONF_DIR/ns_nodes"
+    echo "$CHOOSE_OPEN_REG" > "$CONF_DIR/open_registration"
+    
+    OPEN_REG_FLAG=""
+    if [[ "$CHOOSE_OPEN_REG" =~ ^[Yy]$ ]]; then
+        OPEN_REG_FLAG=" -open-registration"
+        echo -e "✓ 开放注册: ${GREEN}已开启${NC}"
+    else
+        echo -e "✓ 开放注册: ${YELLOW}未开启${NC}"
+    fi
     
     echo -e "✓ 同步 Token 已设置为: ${GREEN}$MASTER_SYNC_TOKEN${NC}"
     echo -e "✓ NS 节点列表已设置为: ${GREEN}$MASTER_NS_NODES${NC}"
@@ -161,7 +174,7 @@ After=network.target
 Type=simple
 User=root
 WorkingDirectory=$CONF_DIR
-ExecStart=$INSTALL_DIR/trinet-dns -dns-addr :53 -web-addr :18080 -data-path $CONF_DIR/trinet-records.json -sync-token $MASTER_SYNC_TOKEN -ns-nodes $MASTER_NS_NODES
+ExecStart=$INSTALL_DIR/trinet-dns -dns-addr :53 -web-addr :18080 -data-path $CONF_DIR/trinet-records.json -sync-token $MASTER_SYNC_TOKEN -ns-nodes $MASTER_NS_NODES$OPEN_REG_FLAG
 Restart=always
 RestartSec=5
 LimitNOFILE=65535
