@@ -766,6 +766,17 @@ func (ws *WebServer) handleUserBilling(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 
+	// 实时从数据库中提取最新的用户余额、套餐与到期时间
+	var currentBalance float64
+	var currentPlan string
+	var currentExpiresAt int64
+	if ws.store.GetDB() != nil {
+		_ = ws.store.GetDB().QueryRow("SELECT COALESCE(balance, 0.0), COALESCE(plan, 'free'), COALESCE(expires_at, 0) FROM users WHERE id = ?", user.ID).Scan(&currentBalance, &currentPlan, &currentExpiresAt)
+		user.Balance = currentBalance
+		user.Plan = currentPlan
+		user.ExpiresAt = currentExpiresAt
+	}
+
 	// 统计用户当前托管域名数
 	var domainCount int
 	if ws.store.GetDB() != nil {
@@ -842,6 +853,7 @@ func (ws *WebServer) handleUserBilling(w http.ResponseWriter, r *http.Request) {
 		"role":            user.Role,
 		"plan":            user.Plan,
 		"expires_at":      user.ExpiresAt,
+		"balance":         currentBalance,
 		"domain_count":    domainCount,
 		"domain_limit":    domainLimit,
 		"plans":           plans,
