@@ -1,11 +1,14 @@
 package store
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"sync"
+
+	_ "github.com/glebarez/go-sqlite"
 )
 
 // DNSRecord 表示一条具体的 DNS 解析记录
@@ -23,17 +26,28 @@ type DomainRecords struct {
 	Records map[string][]DNSRecord `json:"records"` // key: "Subdomain_Type"
 }
 
-// MemoryStore 内存解析记录存储（支持持久化为 JSON 文件）
+// MemoryStore 内存解析记录存储（支持持久化为 SQLite 数据库，并支持从旧 JSON 迁移）
 type MemoryStore struct {
-	mu       sync.RWMutex
-	filePath string
-	Domains  map[string]*DomainRecords `json:"domains"`
-	Tokens   map[string]string         `json:"tokens"` // key: token, value: subdomain.domain_isp
-	WebUser  string                    `json:"web_user,omitempty"`
-	WebPass  string                    `json:"web_pass,omitempty"`
-	// 以下为运行时统计数据，不参与 JSON 持久化序列化
+	mu          sync.RWMutex
+	filePath    string
+	db          *sql.DB
+	Domains     map[string]*DomainRecords `json:"domains"`
+	Tokens      map[string]string         `json:"tokens"` // key: token, value: subdomain.domain_isp
+	WebUser     string                    `json:"web_user,omitempty"`
+	WebPass     string                    `json:"web_pass,omitempty"`
 	queryCount  uint64
 	ispQueryMap map[string]uint64
+}
+
+func NewMemoryStore(filePath string) *MemoryStore {
+	store := &MemoryStore{
+		filePath:    filePath,
+		Domains:     make(map[string]*DomainRecords),
+		Tokens:      make(map[string]string),
+		ispQueryMap: make(map[string]uint64),
+	}
+	store.Load()
+	return store
 }
 
 func (s *MemoryStore) GetCredentials() (string, string) {
@@ -47,18 +61,12 @@ func (s *MemoryStore) SetCredentials(user, pass string) error {
 	defer s.mu.Unlock()
 	s.WebUser = user
 	s.WebPass = pass
-	return s.saveUnlocked()
-}
 
-func NewMemoryStore(filePath string) *MemoryStore {
-	store := &MemoryStore{
-		filePath:    filePath,
-		Domains:     make(map[string]*DomainRecords),
-		Tokens:      make(map[string]string),
-		ispQueryMap: make(map[string]uint64),
+	if s.db != nil {
+		_, err := s.db.Exec("UPDATE users SET username = ?, password_hash = ? WHERE role = 'admin'", user, pass)
+		return err
 	}
-	store.Load()
-	return store
+	return nil
 }
 
 // RecordQuery 记录一次解析查询
@@ -83,7 +91,7 @@ func (s *MemoryStore) GetQueryStats() (uint64, map[string]uint64) {
 	return s.queryCount, m
 }
 
-// Load 从 JSON 文件加载数据
+// Load 初始化 SQLite 并加载数据，支持从 JSON 文件自动迁移
 func (s *MemoryStore) Load() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -92,27 +100,292 @@ func (s *MemoryStore) Load() error {
 		return nil
 	}
 
-	data, err := os.ReadFile(s.filePath)
+	dbPath := s.filePath
+	isJSON := strings.HasSuffix(strings.ToLower(s.filePath), ".json")
+	if isJSON {
+		dbPath = strings.TrimSuffix(s.filePath, ".json") + ".db"
+	}
+
+	db, err := sql.Open("sqlite", dbPath)
 	if err != nil {
-		if os.IsNotExist(err) {
-			s.initDefaultData()
-			return s.saveUnlocked()
+		return fmt.Errorf("failed to open sqlite db: %w", err)
+	}
+	s.db = db
+
+	// 创建表结构
+	query := `
+	CREATE TABLE IF NOT EXISTS users (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		username TEXT UNIQUE,
+		password_hash TEXT,
+		role TEXT
+	);
+	CREATE TABLE IF NOT EXISTS domains (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		name TEXT UNIQUE,
+		ttl INTEGER
+	);
+	CREATE TABLE IF NOT EXISTS dns_records (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		domain_id INTEGER,
+		subdomain TEXT,
+		type TEXT,
+		isp TEXT,
+		values_text TEXT,
+		ttl INTEGER,
+		FOREIGN KEY(domain_id) REFERENCES domains(id) ON DELETE CASCADE
+	);
+	CREATE TABLE IF NOT EXISTS ddns_tokens (
+		token TEXT PRIMARY KEY,
+		record_info TEXT
+	);
+	`
+	if _, err := s.db.Exec(query); err != nil {
+		return fmt.Errorf("failed to init db tables: %w", err)
+	}
+
+	// 检查并执行 JSON 迁移
+	if isJSON {
+		if _, err := os.Stat(s.filePath); err == nil {
+			if err := s.migrateFromJSON(s.filePath); err != nil {
+				return fmt.Errorf("failed to migrate legacy JSON: %w", err)
+			}
 		}
+	}
+
+	// 从 SQLite 载入数据到内存
+	if err := s.loadFromDB(); err != nil {
+		return fmt.Errorf("failed to load data from db: %w", err)
+	}
+
+	return nil
+}
+
+func (s *MemoryStore) migrateFromJSON(jsonPath string) error {
+	data, err := os.ReadFile(jsonPath)
+	if err != nil {
 		return err
 	}
 
-	return json.Unmarshal(data, s)
+	var legacy struct {
+		Domains map[string]*DomainRecords `json:"domains"`
+		Tokens  map[string]string         `json:"tokens"`
+		WebUser string                    `json:"web_user"`
+		WebPass string                    `json:"web_pass"`
+	}
+	if err := json.Unmarshal(data, &legacy); err != nil {
+		return err
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// 1. 迁移用户密码
+	if legacy.WebUser != "" && legacy.WebPass != "" {
+		_, err = tx.Exec("INSERT OR REPLACE INTO users (id, username, password_hash, role) VALUES (1, ?, ?, ?)", legacy.WebUser, legacy.WebPass, "admin")
+		if err != nil {
+			return err
+		}
+	}
+
+	// 2. 迁移域名及解析记录
+	for domName, domObj := range legacy.Domains {
+		_, err = tx.Exec("INSERT OR IGNORE INTO domains (name, ttl) VALUES (?, ?)", domName, domObj.TTL)
+		if err != nil {
+			return err
+		}
+		var domID int64
+		err = tx.QueryRow("SELECT id FROM domains WHERE name = ?", domName).Scan(&domID)
+		if err != nil {
+			return err
+		}
+
+		for _, recordList := range domObj.Records {
+			for _, rec := range recordList {
+				valsText := strings.Join(rec.Values, ",")
+				_, err = tx.Exec("INSERT INTO dns_records (domain_id, subdomain, type, isp, values_text, ttl) VALUES (?, ?, ?, ?, ?, ?)",
+					domID, rec.Subdomain, rec.Type, rec.ISP, valsText, rec.TTL)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	// 3. 迁移 DDNS Token
+	for token, target := range legacy.Tokens {
+		_, err = tx.Exec("INSERT OR REPLACE INTO ddns_tokens (token, record_info) VALUES (?, ?)", token, target)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+
+	// 备份原 JSON 文件防止重复迁移
+	_ = os.Rename(jsonPath, jsonPath+".bak")
+	return nil
+}
+
+func (s *MemoryStore) loadFromDB() error {
+	// 1. 载入 Web 管理员账户
+	var userCount int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM users").Scan(&userCount)
+	if err != nil {
+		return err
+	}
+	if userCount == 0 {
+		_, err = s.db.Exec("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", "admin", "admin123", "admin")
+		if err != nil {
+			return err
+		}
+		s.WebUser = "admin"
+		s.WebPass = "admin123"
+
+		// 新初始化数据库，注入默认示例解析记录
+		s.initDefaultData()
+
+		// 同步写入 SQLite
+		tx, err := s.db.Begin()
+		if err != nil {
+			return err
+		}
+		defer tx.Rollback()
+
+		for domName, domObj := range s.Domains {
+			_, err = tx.Exec("INSERT OR IGNORE INTO domains (name, ttl) VALUES (?, ?)", domName, domObj.TTL)
+			if err != nil {
+				return err
+			}
+			var domID int64
+			err = tx.QueryRow("SELECT id FROM domains WHERE name = ?", domName).Scan(&domID)
+			if err != nil {
+				return err
+			}
+
+			for _, recordList := range domObj.Records {
+				for _, rec := range recordList {
+					valsText := strings.Join(rec.Values, ",")
+					_, err = tx.Exec("INSERT INTO dns_records (domain_id, subdomain, type, isp, values_text, ttl) VALUES (?, ?, ?, ?, ?, ?)",
+						domID, rec.Subdomain, rec.Type, rec.ISP, valsText, rec.TTL)
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		for token, target := range s.Tokens {
+			_, err = tx.Exec("INSERT OR REPLACE INTO ddns_tokens (token, record_info) VALUES (?, ?)", token, target)
+			if err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Commit(); err != nil {
+			return err
+		}
+	} else {
+		err = s.db.QueryRow("SELECT username, password_hash FROM users WHERE role = 'admin' LIMIT 1").Scan(&s.WebUser, &s.WebPass)
+		if err != nil {
+			return err
+		}
+	}
+
+	// 2. 载入所有域名
+	domRows, err := s.db.Query("SELECT id, name, ttl FROM domains")
+	if err != nil {
+		return err
+	}
+	defer domRows.Close()
+
+	s.Domains = make(map[string]*DomainRecords)
+
+	type dbDom struct {
+		id   int64
+		name string
+		ttl  uint32
+	}
+	var dbDoms []dbDom
+	for domRows.Next() {
+		var d dbDom
+		if err := domRows.Scan(&d.id, &d.name, &d.ttl); err != nil {
+			return err
+		}
+		dbDoms = append(dbDoms, d)
+		s.Domains[d.name] = &DomainRecords{
+			TTL:     d.ttl,
+			Records: make(map[string][]DNSRecord),
+		}
+	}
+
+	// 3. 载入域名下的解析记录
+	for _, d := range dbDoms {
+		recRows, err := s.db.Query("SELECT subdomain, type, isp, values_text, ttl FROM dns_records WHERE domain_id = ?", d.id)
+		if err != nil {
+			return err
+		}
+
+		domObj := s.Domains[d.name]
+		for recRows.Next() {
+			var rec DNSRecord
+			var valsText string
+			if err := recRows.Scan(&rec.Subdomain, &rec.Type, &rec.ISP, &valsText, &rec.TTL); err != nil {
+				recRows.Close()
+				return err
+			}
+			rec.Values = strings.Split(valsText, ",")
+			key := rec.Subdomain + "_" + rec.Type
+			domObj.Records[key] = append(domObj.Records[key], rec)
+		}
+		recRows.Close()
+	}
+
+	// 4. 载入 DDNS Token
+	tokRows, err := s.db.Query("SELECT token, record_info FROM ddns_tokens")
+	if err != nil {
+		return err
+	}
+	defer tokRows.Close()
+
+	s.Tokens = make(map[string]string)
+	for tokRows.Next() {
+		var token, info string
+		if err := tokRows.Scan(&token, &info); err != nil {
+			return err
+		}
+		s.Tokens[token] = info
+	}
+
+	return nil
 }
 
 func (s *MemoryStore) saveUnlocked() error {
-	if s.filePath == "" {
+	if s.db == nil {
 		return nil
 	}
-	data, err := json.MarshalIndent(s, "", "  ")
+
+	tx, err := s.db.Begin()
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(s.filePath, data, 0644)
+	defer tx.Rollback()
+
+	// 全量同步 Token 表
+	_, _ = tx.Exec("DELETE FROM ddns_tokens")
+	for token, target := range s.Tokens {
+		_, err = tx.Exec("INSERT INTO ddns_tokens (token, record_info) VALUES (?, ?)", token, target)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
 }
 
 type PublicStoreData struct {
@@ -141,14 +414,14 @@ func (s *MemoryStore) GetDomains() []string {
 	return domains
 }
 
-// LoadDataFromMap 同步时写入数据
+// LoadDataFromMap 同步时写入数据 (节点 Agent 模式使用)
 func (s *MemoryStore) LoadDataFromMap(domains map[string]*DomainRecords) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.Domains = domains
 }
 
-// Lookup 检索 DNS 记录
+// Lookup 检索 DNS 记录 (高性能内存读取，DNS热通道)
 func (s *MemoryStore) Lookup(domain, subdomain, qType, isp string) ([]string, uint32) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -180,7 +453,7 @@ func (s *MemoryStore) Lookup(domain, subdomain, qType, isp string) ([]string, ui
 	return nil, 0
 }
 
-// AddRecord 添加/更新解析记录 (线程安全)
+// AddRecord 添加/更新解析记录 (线程安全，同步写入数据库)
 func (s *MemoryStore) AddRecord(domain, subdomain, qtype, isp string, values []string, ttl uint32) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -218,10 +491,36 @@ func (s *MemoryStore) AddRecord(domain, subdomain, qtype, isp string, values []s
 	}
 
 	dom.Records[key] = records
-	s.saveUnlocked()
+
+	// 同步写入 SQLite
+	if s.db != nil {
+		tx, err := s.db.Begin()
+		if err != nil {
+			return
+		}
+		defer tx.Rollback()
+
+		_, _ = tx.Exec("INSERT OR IGNORE INTO domains (name, ttl) VALUES (?, ?)", domain, ttl)
+		var domID int64
+		err = tx.QueryRow("SELECT id FROM domains WHERE name = ?", domain).Scan(&domID)
+		if err != nil {
+			return
+		}
+
+		_, _ = tx.Exec("DELETE FROM dns_records WHERE domain_id = ? AND subdomain = ? AND type = ? AND isp = ?", domID, subdomain, qtype, isp)
+
+		valsText := strings.Join(values, ",")
+		_, err = tx.Exec("INSERT INTO dns_records (domain_id, subdomain, type, isp, values_text, ttl) VALUES (?, ?, ?, ?, ?, ?)",
+			domID, subdomain, qtype, isp, valsText, ttl)
+		if err != nil {
+			return
+		}
+
+		_ = tx.Commit()
+	}
 }
 
-// DeleteRecord 删除解析记录 (线程安全)
+// DeleteRecord 删除解析记录 (线程安全，同步删除数据库)
 func (s *MemoryStore) DeleteRecord(domain, subdomain, qtype, isp string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -249,10 +548,31 @@ func (s *MemoryStore) DeleteRecord(domain, subdomain, qtype, isp string) {
 	} else {
 		dom.Records[key] = newRecords
 	}
-	s.saveUnlocked()
+
+	// 同步写入 SQLite
+	if s.db != nil {
+		tx, err := s.db.Begin()
+		if err != nil {
+			return
+		}
+		defer tx.Rollback()
+
+		var domID int64
+		err = tx.QueryRow("SELECT id FROM domains WHERE name = ?", domain).Scan(&domID)
+		if err == nil {
+			_, _ = tx.Exec("DELETE FROM dns_records WHERE domain_id = ? AND subdomain = ? AND type = ? AND isp = ?", domID, subdomain, qtype, isp)
+			
+			// 如果该域名下已经没有任何记录了，也可以在数据库和内存中清理掉该域名
+			if len(dom.Records) == 0 {
+				delete(s.Domains, domain)
+				_, _ = tx.Exec("DELETE FROM domains WHERE id = ?", domID)
+			}
+		}
+		_ = tx.Commit()
+	}
 }
 
-// UpdateDDNS 通过 Token 更新动态 IP
+// UpdateDDNS 通过 Token 更新动态 IP (同步更新数据库)
 func (s *MemoryStore) UpdateDDNS(token, ip string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -311,7 +631,31 @@ func (s *MemoryStore) UpdateDDNS(token, ip string) (string, error) {
 	}
 
 	dom.Records[key] = records
-	s.saveUnlocked()
+
+	// 同步写入 SQLite
+	if s.db != nil {
+		tx, err := s.db.Begin()
+		if err != nil {
+			return "", err
+		}
+		defer tx.Rollback()
+
+		var domID int64
+		err = tx.QueryRow("SELECT id FROM domains WHERE name = ?", domain).Scan(&domID)
+		if err != nil {
+			return "", err
+		}
+
+		_, _ = tx.Exec("DELETE FROM dns_records WHERE domain_id = ? AND subdomain = ? AND type = 'A' AND isp = ?", domID, subdomain, isp)
+		_, err = tx.Exec("INSERT INTO dns_records (domain_id, subdomain, type, isp, values_text, ttl) VALUES (?, ?, 'A', ?, ?, 60)",
+			domID, subdomain, isp, ip)
+		if err != nil {
+			return "", err
+		}
+
+		_ = tx.Commit()
+	}
+
 	return fqdn + " (" + strings.ToUpper(isp) + ")", nil
 }
 
