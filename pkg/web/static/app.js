@@ -33,6 +33,45 @@ function checkLogin() {
             logSource.close();
             logSource = null;
         }
+        initLoginConfig();
+    }
+}
+
+// 获取开放注册配置并设置 UI
+async function initLoginConfig() {
+    try {
+        const res = await fetch('/api/login');
+        if (res.ok) {
+            const data = await res.json();
+            const regLink = document.getElementById('reg-link-container');
+            if (data.open_registration) {
+                regLink.style.display = 'block';
+            } else {
+                regLink.style.display = 'none';
+            }
+        }
+    } catch (err) {
+        console.error('无法载入开放注册配置', err);
+    }
+}
+
+// 切换登录和注册界面
+function toggleLoginReg(showReg) {
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const title = document.getElementById('login-box-title');
+    const desc = document.getElementById('login-box-desc');
+    
+    if (showReg) {
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+        title.innerText = '用户注册';
+        desc.innerText = '创建一个新的 TriNet 解析账户';
+    } else {
+        loginForm.style.display = 'block';
+        registerForm.style.display = 'none';
+        title.innerText = 'TriNet DNS';
+        desc.innerText = '三网智能解析控制台';
     }
 }
 
@@ -62,14 +101,61 @@ async function handleLoginSubmit(event) {
     }
 }
 
+// 提交注册表单
+async function handleRegisterSubmit(event) {
+    event.preventDefault();
+    const username = document.getElementById('register-username').value.trim();
+    const password = document.getElementById('register-password').value.trim();
+    const confirm = document.getElementById('register-confirm').value.trim();
+
+    if (password !== confirm) {
+        alert('两次输入的密码不一致！');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/register', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            alert('注册成功，请使用该账号登录！');
+            toggleLoginReg(false);
+        } else {
+            alert(data.error || '注册失败，请稍后重试');
+        }
+    } catch (err) {
+        alert('注册失败，无法连接到服务器');
+    }
+}
+
 // 退出登录
-function logout() {
+async function logout() {
+    const token = localStorage.getItem('trinet_token');
+    if (token) {
+        try {
+            await fetch('/api/logout', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+        } catch (err) {
+            // 忽略报错
+        }
+    }
     localStorage.removeItem('trinet_token');
     checkLogin();
 }
 
 const passwordModal = document.getElementById('password-modal');
 const passwordForm = document.getElementById('password-form');
+
+// 初始化登录状态检测
+document.addEventListener('DOMContentLoaded', () => {
+    checkLogin();
+});
 
 function showPasswordModal() {
     passwordForm.reset();
@@ -83,7 +169,6 @@ function closePasswordModal() {
 async function handlePasswordSubmit(event) {
     event.preventDefault();
     const oldPassword = document.getElementById('password-old').value.trim();
-    const newUsername = document.getElementById('password-new-username').value.trim();
     const newPassword = document.getElementById('password-new').value.trim();
     const confirmPassword = document.getElementById('password-confirm').value.trim();
 
@@ -98,7 +183,6 @@ async function handlePasswordSubmit(event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 old_password: oldPassword,
-                new_username: newUsername,
                 new_password: newPassword
             })
         });
@@ -336,6 +420,66 @@ function loadDDNSTable() {
             </td>
         `;
         tbody.appendChild(tr);
+    }
+}
+
+const ddnsModal = document.getElementById('ddns-modal');
+const ddnsForm = document.getElementById('ddns-form');
+
+function generateToken() {
+    ddnsForm.reset();
+    ddnsModal.classList.add('show');
+}
+
+function closeDdnsModal() {
+    ddnsModal.classList.remove('show');
+}
+
+async function saveDdnsToken(event) {
+    event.preventDefault();
+    const fqdn = document.getElementById('ddns-input-fqdn').value.trim();
+    const isp = document.getElementById('ddns-select-isp').value;
+
+    try {
+        const res = await fetchAPI('/api/ddns/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fqdn, isp })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            alert(`Token 生成成功!\nToken 值: ${data.token}\n请务必复制保存此 Token，关闭后将无法再次查看！`);
+            closeDdnsModal();
+            loadRecords(); // 刷新以显示新生成的 Token
+        } else {
+            const data = await res.json();
+            alert('生成失败: ' + (data.error || '未知错误'));
+        }
+    } catch (err) {
+        alert('生成失败: ' + err.message);
+    }
+}
+
+async function deleteToken(token) {
+    if (!confirm('确认要删除此 DDNS Token 吗？对应的 DDNS 设备将无法再进行更新。')) {
+        return;
+    }
+
+    try {
+        const res = await fetchAPI(`/api/ddns/token?token=${encodeURIComponent(token)}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            alert('Token 删除成功');
+            loadRecords();
+        } else {
+            const data = await res.json();
+            alert('删除失败: ' + (data.error || '未知错误'));
+        }
+    } catch (err) {
+        alert('删除失败: ' + err.message);
     }
 }
 

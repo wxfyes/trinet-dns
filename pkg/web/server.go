@@ -1,9 +1,7 @@
 package web
 
 import (
-	"crypto/sha256"
 	"embed"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -26,26 +24,13 @@ type WebServer struct {
 	logChan   chan string
 	clients   map[chan string]bool
 	clientsMu sync.RWMutex
-	authMu    sync.RWMutex
-	username  string
-	password  string
-	authToken string
 	startTime time.Time
 	syncToken string
 	nsNodes   string
+	openReg   bool
 }
 
-func (ws *WebServer) updateAuthToken(user, pass string) {
-	ws.authMu.Lock()
-	defer ws.authMu.Unlock()
-	ws.username = user
-	ws.password = pass
-	h := sha256.New()
-	h.Write([]byte(user + ":" + pass))
-	ws.authToken = hex.EncodeToString(h.Sum(nil))
-}
-
-func NewWebServer(addr string, s *store.MemoryStore, logChan chan string, username, password string, syncToken string, nsNodes string) *WebServer {
+func NewWebServer(addr string, s *store.MemoryStore, logChan chan string, username, password string, syncToken string, nsNodes string, openReg bool) *WebServer {
 	ws := &WebServer{
 		addr:      addr,
 		store:     s,
@@ -54,32 +39,43 @@ func NewWebServer(addr string, s *store.MemoryStore, logChan chan string, userna
 		startTime: time.Now(),
 		syncToken: syncToken,
 		nsNodes:   nsNodes,
+		openReg:   openReg,
 	}
-	ws.updateAuthToken(username, password)
-	go ws.logBroadcaster()
 	return ws
 }
 
-func (ws *WebServer) checkAuth(w http.ResponseWriter, r *http.Request) bool {
-	ws.authMu.RLock()
-	expectedToken := ws.authToken
-	ws.authMu.RUnlock()
-
+func (ws *WebServer) checkAuth(w http.ResponseWriter, r *http.Request) (*store.User, bool) {
 	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 	if token == "" {
 		token = r.URL.Query().Get("token")
 	}
-	if token != expectedToken {
+	if token == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		w.Write([]byte(`{"error":"未授权"}`))
-		return false
+		return nil, false
 	}
-	return true
+
+	user, err := ws.store.AuthenticateToken(token)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
+		return nil, false
+	}
+	return user, true
 }
 
 func (ws *WebServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
+	if r.Method == http.MethodGet {
+		// 返回公开配置 (如是否开启注册)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"open_registration": ws.openReg,
+		})
+		return
+	}
+
 	if r.Method != http.MethodPost {
 		w.WriteHeader(http.StatusMethodNotAllowed)
 		w.Write([]byte(`{"error":"Method Not Allowed"}`))
@@ -96,23 +92,72 @@ func (ws *WebServer) handleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ws.authMu.RLock()
-	currUser := ws.username
-	currPass := ws.password
-	currToken := ws.authToken
-	ws.authMu.RUnlock()
-
-	if req.Username == currUser && req.Password == currPass {
-		w.Write([]byte(fmt.Sprintf(`{"status":"success","token":"%s"}`, currToken)))
+	token, role, err := ws.store.CreateSession(req.Username, req.Password)
+	if err != nil {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
 		return
 	}
 
-	w.WriteHeader(http.StatusUnauthorized)
-	w.Write([]byte(`{"error":"用户名或密码错误"}`))
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status": "success",
+		"token":  token,
+		"role":   role,
+	})
+}
+
+func (ws *WebServer) handleRegister(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.Write([]byte(`{"error":"Method Not Allowed"}`))
+		return
+	}
+
+	if !ws.openReg {
+		w.WriteHeader(http.StatusForbidden)
+		w.Write([]byte(`{"error":"注册已关闭"}`))
+		return
+	}
+
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"参数格式错误"}`))
+		return
+	}
+
+	if req.Username == "" || req.Password == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"用户名与密码不能为空"}`))
+		return
+	}
+
+	err := ws.store.RegisterUser(req.Username, req.Password, "user")
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
+		return
+	}
+
+	w.Write([]byte(`{"status":"success","message":"注册成功"}`))
+}
+
+func (ws *WebServer) handleLogout(w http.ResponseWriter, r *http.Request) {
+	token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if token != "" {
+		_ = ws.store.DestroySession(token)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(`{"status":"success"}`))
 }
 
 func (ws *WebServer) handlePassword(w http.ResponseWriter, r *http.Request) {
-	if !ws.checkAuth(w, r) {
+	user, ok := ws.checkAuth(w, r)
+	if !ok {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -124,7 +169,6 @@ func (ws *WebServer) handlePassword(w http.ResponseWriter, r *http.Request) {
 
 	var req struct {
 		OldPassword string `json:"old_password"`
-		NewUsername string `json:"new_username"`
 		NewPassword string `json:"new_password"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -133,37 +177,25 @@ func (ws *WebServer) handlePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ws.authMu.RLock()
-	currPass := ws.password
-	ws.authMu.RUnlock()
-
-	if req.OldPassword != currPass {
+	if req.OldPassword == "" || req.NewPassword == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"当前密码错误"}`))
+		w.Write([]byte(`{"error":"密码不能为空"}`))
 		return
 	}
 
-	if req.NewUsername == "" || req.NewPassword == "" {
+	err := ws.store.UpdateUserPassword(user.ID, req.OldPassword, req.NewPassword)
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(`{"error":"新用户名或新密码不能为空"}`))
+		w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
 		return
 	}
-
-	// 更新并保存到 JSON 文件
-	if err := ws.store.SetCredentials(req.NewUsername, req.NewPassword); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf(`{"error":"保存失败: %s"}`, err.Error())))
-		return
-	}
-
-	// 更新内存中的 WebServer 鉴权状态
-	ws.updateAuthToken(req.NewUsername, req.NewPassword)
 
 	w.Write([]byte(`{"status":"success","message":"密码修改成功"}`))
 }
 
 func (ws *WebServer) handleSysStats(w http.ResponseWriter, r *http.Request) {
-	if !ws.checkAuth(w, r) {
+	_, ok := ws.checkAuth(w, r)
+	if !ok {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -204,14 +236,12 @@ func (ws *WebServer) handleSysStats(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(stats)
 }
 
-// handleSync 节点同步接口，支持可选的 Token 安全认证，返回 DNS 域名解析记录
 func (ws *WebServer) handleSync(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
 
-	// 校验同步 Token（如果主控端配置了 syncToken 的话）
 	if ws.syncToken != "" {
 		token := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if token == "" {
@@ -227,7 +257,6 @@ func (ws *WebServer) handleSync(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	data := ws.store.GetPublicData()
-	// 只返回 domains 部分，不暴露 tokens
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"domains": data.Domains,
 	})
@@ -236,14 +265,15 @@ func (ws *WebServer) handleSync(w http.ResponseWriter, r *http.Request) {
 func (ws *WebServer) Start() {
 	// API 路由
 	http.HandleFunc("/api/login", ws.handleLogin)
+	http.HandleFunc("/api/register", ws.handleRegister)
+	http.HandleFunc("/api/logout", ws.handleLogout)
 	http.HandleFunc("/api/admin/password", ws.handlePassword)
 	http.HandleFunc("/api/records", ws.handleRecords)
+	http.HandleFunc("/api/ddns/token", ws.handleDDNSToken)
 	http.HandleFunc("/api/ddns/update", ws.handleDDNSUpdate)
 	http.HandleFunc("/api/logs/stream", ws.handleLogStream)
 	http.HandleFunc("/api/sys/stats", ws.handleSysStats)
-	// 节点同步专用公开只读接口（仅返回 DNS 解析记录，不含账号密码）
 	http.HandleFunc("/api/sync", ws.handleSync)
-
 
 	// 静态文件服务器
 	subFS, err := fs.Sub(staticFS, "static")
@@ -260,7 +290,59 @@ func (ws *WebServer) Start() {
 	}()
 }
 
-// logBroadcaster 将日志通道中的日志广播给所有 SSE 客户端
+func (ws *WebServer) handleDDNSToken(w http.ResponseWriter, r *http.Request) {
+	user, ok := ws.checkAuth(w, r)
+	if !ok {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	switch r.Method {
+	case http.MethodPost:
+		var req struct {
+			FQDN string `json:"fqdn"`
+			ISP  string `json:"isp"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			http.Error(w, `{"error":"参数格式错误"}`, http.StatusBadRequest)
+			return
+		}
+		if req.FQDN == "" || req.ISP == "" {
+			http.Error(w, `{"error":"域名和线路不能为空"}`, http.StatusBadRequest)
+			return
+		}
+
+		token, err := ws.store.GenerateDDNSToken(user.ID, user.Role, req.FQDN, req.ISP)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
+			return
+		}
+
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "success",
+			"token":  token,
+		})
+
+	case http.MethodDelete:
+		token := r.URL.Query().Get("token")
+		if token == "" {
+			http.Error(w, `{"error":"缺少 token 参数"}`, http.StatusBadRequest)
+			return
+		}
+
+		err := ws.store.DeleteDDNSToken(user.ID, user.Role, token)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
+			return
+		}
+
+		w.Write([]byte(`{"status":"success"}`))
+
+	default:
+		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+	}
+}
+
 func (ws *WebServer) logBroadcaster() {
 	for logMsg := range ws.logChan {
 		ws.clientsMu.RLock()
@@ -268,23 +350,22 @@ func (ws *WebServer) logBroadcaster() {
 			select {
 			case clientChan <- logMsg:
 			default:
-				// 消费不及时则丢弃，避免阻塞广播
 			}
 		}
 		ws.clientsMu.RUnlock()
 	}
 }
 
-// handleRecords 提供 DNS 记录的增删改查
 func (ws *WebServer) handleRecords(w http.ResponseWriter, r *http.Request) {
-	if !ws.checkAuth(w, r) {
+	user, ok := ws.checkAuth(w, r)
+	if !ok {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 
 	switch r.Method {
 	case http.MethodGet:
-		json.NewEncoder(w).Encode(ws.store.GetPublicData())
+		json.NewEncoder(w).Encode(ws.store.GetUserData(user.ID, user.Role))
 
 	case http.MethodPost:
 		var req struct {
@@ -300,7 +381,11 @@ func (ws *WebServer) handleRecords(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		ws.store.AddRecord(req.Domain, req.Subdomain, req.Type, req.ISP, req.Values, req.TTL)
+		err := ws.store.AddRecordWithAuth(user.ID, user.Role, req.Domain, req.Subdomain, req.Type, req.ISP, req.Values, req.TTL)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusForbidden)
+			return
+		}
 		w.Write([]byte(`{"status":"success"}`))
 
 	case http.MethodDelete:
@@ -314,7 +399,11 @@ func (ws *WebServer) handleRecords(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		ws.store.DeleteRecord(domain, subdomain, qtype, isp)
+		err := ws.store.DeleteRecordWithAuth(user.ID, user.Role, domain, subdomain, qtype, isp)
+		if err != nil {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusForbidden)
+			return
+		}
 		w.Write([]byte(`{"status":"success"}`))
 
 	default:
@@ -322,7 +411,6 @@ func (ws *WebServer) handleRecords(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleDDNSUpdate 动态 DNS 上报接口
 func (ws *WebServer) handleDDNSUpdate(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -340,7 +428,6 @@ func (ws *WebServer) handleDDNSUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 获取上报的 IP
 	newIP := r.FormValue("ip")
 	if newIP == "" {
 		newIP = r.URL.Query().Get("ip")
@@ -355,7 +442,6 @@ func (ws *WebServer) handleDDNSUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 调用存储引擎的线程安全方法进行更新
 	targetDesc, err := ws.store.UpdateDDNS(token, newIP)
 	if err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
@@ -372,9 +458,9 @@ func (ws *WebServer) handleDDNSUpdate(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(fmt.Sprintf(`{"status":"success","ip":"%s"}`, newIP)))
 }
 
-// handleLogStream SSE 实时推流接口
 func (ws *WebServer) handleLogStream(w http.ResponseWriter, r *http.Request) {
-	if !ws.checkAuth(w, r) {
+	_, ok := ws.checkAuth(w, r)
+	if !ok {
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -395,14 +481,26 @@ func (ws *WebServer) handleLogStream(w http.ResponseWriter, r *http.Request) {
 		close(logChan)
 	}()
 
-	fmt.Fprintf(w, "data: %s\n\n", "[SYSTEM] SSE 连接已就绪，等待解析日志事件...")
-	w.(http.Flusher).Flush()
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "SSE not supported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Write([]byte("data: [SYSTEM] SSE 日志通道已连接。\n\n"))
+	flusher.Flush()
 
 	for {
 		select {
-		case logMsg := <-logChan:
-			fmt.Fprintf(w, "data: %s\n\n", logMsg)
-			w.(http.Flusher).Flush()
+		case msg, open := <-logChan:
+			if !open {
+				return
+			}
+			_, err := fmt.Fprintf(w, "data: %s\n\n", msg)
+			if err != nil {
+				return
+			}
+			flusher.Flush()
 		case <-r.Context().Done():
 			return
 		}

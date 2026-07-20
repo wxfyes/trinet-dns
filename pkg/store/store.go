@@ -1,15 +1,25 @@
 package store
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	_ "github.com/glebarez/go-sqlite"
 )
+
+// User 表示系统中的用户账号
+type User struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+	Role     string `json:"role"` // "admin" 或 "user"
+}
 
 // DNSRecord 表示一条具体的 DNS 解析记录
 type DNSRecord struct {
@@ -22,6 +32,7 @@ type DNSRecord struct {
 
 // DomainRecords 包含一个域名下所有子域名的路由解析记录
 type DomainRecords struct {
+	OwnerID int64                  `json:"owner_id"` // 域名拥有者ID
 	TTL     uint32                 `json:"ttl"`
 	Records map[string][]DNSRecord `json:"records"` // key: "Subdomain_Type"
 }
@@ -123,6 +134,7 @@ func (s *MemoryStore) Load() error {
 	CREATE TABLE IF NOT EXISTS domains (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT UNIQUE,
+		owner_id INTEGER,
 		ttl INTEGER
 	);
 	CREATE TABLE IF NOT EXISTS dns_records (
@@ -139,10 +151,19 @@ func (s *MemoryStore) Load() error {
 		token TEXT PRIMARY KEY,
 		record_info TEXT
 	);
+	CREATE TABLE IF NOT EXISTS user_sessions (
+		token TEXT PRIMARY KEY,
+		user_id INTEGER,
+		expires_at INTEGER,
+		FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+	);
 	`
 	if _, err := s.db.Exec(query); err != nil {
 		return fmt.Errorf("failed to init db tables: %w", err)
 	}
+
+	// 执行表结构升级 (平滑升级旧数据库表增加 owner_id)
+	_, _ = s.db.Exec("ALTER TABLE domains ADD COLUMN owner_id INTEGER DEFAULT 1;")
 
 	// 检查并执行 JSON 迁移
 	if isJSON {
@@ -193,7 +214,11 @@ func (s *MemoryStore) migrateFromJSON(jsonPath string) error {
 
 	// 2. 迁移域名及解析记录
 	for domName, domObj := range legacy.Domains {
-		_, err = tx.Exec("INSERT OR IGNORE INTO domains (name, ttl) VALUES (?, ?)", domName, domObj.TTL)
+		ownerID := domObj.OwnerID
+		if ownerID == 0 {
+			ownerID = 1 // 默认为管理员
+		}
+		_, err = tx.Exec("INSERT OR IGNORE INTO domains (name, owner_id, ttl) VALUES (?, ?, ?)", domName, ownerID, domObj.TTL)
 		if err != nil {
 			return err
 		}
@@ -258,7 +283,11 @@ func (s *MemoryStore) loadFromDB() error {
 		defer tx.Rollback()
 
 		for domName, domObj := range s.Domains {
-			_, err = tx.Exec("INSERT OR IGNORE INTO domains (name, ttl) VALUES (?, ?)", domName, domObj.TTL)
+			ownerID := domObj.OwnerID
+			if ownerID == 0 {
+				ownerID = 1
+			}
+			_, err = tx.Exec("INSERT OR IGNORE INTO domains (name, owner_id, ttl) VALUES (?, ?, ?)", domName, ownerID, domObj.TTL)
 			if err != nil {
 				return err
 			}
@@ -298,7 +327,7 @@ func (s *MemoryStore) loadFromDB() error {
 	}
 
 	// 2. 载入所有域名
-	domRows, err := s.db.Query("SELECT id, name, ttl FROM domains")
+	domRows, err := s.db.Query("SELECT id, name, owner_id, ttl FROM domains")
 	if err != nil {
 		return err
 	}
@@ -307,18 +336,20 @@ func (s *MemoryStore) loadFromDB() error {
 	s.Domains = make(map[string]*DomainRecords)
 
 	type dbDom struct {
-		id   int64
-		name string
-		ttl  uint32
+		id      int64
+		name    string
+		ownerID int64
+		ttl     uint32
 	}
 	var dbDoms []dbDom
 	for domRows.Next() {
 		var d dbDom
-		if err := domRows.Scan(&d.id, &d.name, &d.ttl); err != nil {
+		if err := domRows.Scan(&d.id, &d.name, &d.ownerID, &d.ttl); err != nil {
 			return err
 		}
 		dbDoms = append(dbDoms, d)
 		s.Domains[d.name] = &DomainRecords{
+			OwnerID: d.ownerID,
 			TTL:     d.ttl,
 			Records: make(map[string][]DNSRecord),
 		}
@@ -403,6 +434,47 @@ func (s *MemoryStore) GetPublicData() PublicStoreData {
 	}
 }
 
+// GetUserData 根据用户身份获取隔离过滤后的解析数据与 Token
+func (s *MemoryStore) GetUserData(userID int64, role string) PublicStoreData {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if role == "admin" {
+		return PublicStoreData{
+			Domains: s.Domains,
+			Tokens:  s.Tokens,
+		}
+	}
+
+	// 过滤域名记录
+	filteredDomains := make(map[string]*DomainRecords)
+	for name, dom := range s.Domains {
+		if dom.OwnerID == userID {
+			filteredDomains[name] = dom
+		}
+	}
+
+	// 过滤与用户拥有的域名匹配的 DDNS Token
+	filteredTokens := make(map[string]string)
+	for token, target := range s.Tokens {
+		parts := strings.Split(target, "_")
+		if len(parts) >= 2 {
+			fqdn := parts[0]
+			for domName := range filteredDomains {
+				if fqdn == domName || strings.HasSuffix(fqdn, "."+domName) {
+					filteredTokens[token] = target
+					break
+				}
+			}
+		}
+	}
+
+	return PublicStoreData{
+		Domains: filteredDomains,
+		Tokens:  filteredTokens,
+	}
+}
+
 // GetDomains 获取所有已托管域名
 func (s *MemoryStore) GetDomains() []string {
 	s.mu.RLock()
@@ -453,14 +525,24 @@ func (s *MemoryStore) Lookup(domain, subdomain, qType, isp string) ([]string, ui
 	return nil, 0
 }
 
-// AddRecord 添加/更新解析记录 (线程安全，同步写入数据库)
+// AddRecord 独立服务器及向前兼容的普通添加方法
 func (s *MemoryStore) AddRecord(domain, subdomain, qtype, isp string, values []string, ttl uint32) {
+	_ = s.AddRecordWithAuth(1, "admin", domain, subdomain, qtype, isp, values, ttl)
+}
+
+// AddRecordWithAuth 带权限控制添加解析记录
+func (s *MemoryStore) AddRecordWithAuth(userID int64, role string, domain, subdomain, qtype, isp string, values []string, ttl uint32) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	dom, exists := s.Domains[domain]
-	if !exists {
+	if exists {
+		if role != "admin" && dom.OwnerID != userID {
+			return fmt.Errorf("无权限修改该域名解析")
+		}
+	} else {
 		dom = &DomainRecords{
+			OwnerID: userID,
 			TTL:     ttl,
 			Records: make(map[string][]DNSRecord),
 		}
@@ -496,15 +578,15 @@ func (s *MemoryStore) AddRecord(domain, subdomain, qtype, isp string, values []s
 	if s.db != nil {
 		tx, err := s.db.Begin()
 		if err != nil {
-			return
+			return err
 		}
 		defer tx.Rollback()
 
-		_, _ = tx.Exec("INSERT OR IGNORE INTO domains (name, ttl) VALUES (?, ?)", domain, ttl)
+		_, _ = tx.Exec("INSERT OR IGNORE INTO domains (name, owner_id, ttl) VALUES (?, ?, ?)", domain, dom.OwnerID, ttl)
 		var domID int64
 		err = tx.QueryRow("SELECT id FROM domains WHERE name = ?", domain).Scan(&domID)
 		if err != nil {
-			return
+			return err
 		}
 
 		_, _ = tx.Exec("DELETE FROM dns_records WHERE domain_id = ? AND subdomain = ? AND type = ? AND isp = ?", domID, subdomain, qtype, isp)
@@ -513,27 +595,36 @@ func (s *MemoryStore) AddRecord(domain, subdomain, qtype, isp string, values []s
 		_, err = tx.Exec("INSERT INTO dns_records (domain_id, subdomain, type, isp, values_text, ttl) VALUES (?, ?, ?, ?, ?, ?)",
 			domID, subdomain, qtype, isp, valsText, ttl)
 		if err != nil {
-			return
+			return err
 		}
 
-		_ = tx.Commit()
+		return tx.Commit()
 	}
+	return nil
 }
 
-// DeleteRecord 删除解析记录 (线程安全，同步删除数据库)
+// DeleteRecord 独立服务器及向前兼容的普通删除方法
 func (s *MemoryStore) DeleteRecord(domain, subdomain, qtype, isp string) {
+	_ = s.DeleteRecordWithAuth(1, "admin", domain, subdomain, qtype, isp)
+}
+
+// DeleteRecordWithAuth 带权限控制删除解析记录
+func (s *MemoryStore) DeleteRecordWithAuth(userID int64, role string, domain, subdomain, qtype, isp string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	dom, exists := s.Domains[domain]
 	if !exists {
-		return
+		return fmt.Errorf("域名未托管")
+	}
+	if role != "admin" && dom.OwnerID != userID {
+		return fmt.Errorf("无权限修改该域名解析")
 	}
 
 	key := subdomain + "_" + qtype
 	records, found := dom.Records[key]
 	if !found {
-		return
+		return nil
 	}
 
 	var newRecords []DNSRecord
@@ -553,7 +644,7 @@ func (s *MemoryStore) DeleteRecord(domain, subdomain, qtype, isp string) {
 	if s.db != nil {
 		tx, err := s.db.Begin()
 		if err != nil {
-			return
+			return err
 		}
 		defer tx.Rollback()
 
@@ -562,14 +653,14 @@ func (s *MemoryStore) DeleteRecord(domain, subdomain, qtype, isp string) {
 		if err == nil {
 			_, _ = tx.Exec("DELETE FROM dns_records WHERE domain_id = ? AND subdomain = ? AND type = ? AND isp = ?", domID, subdomain, qtype, isp)
 			
-			// 如果该域名下已经没有任何记录了，也可以在数据库和内存中清理掉该域名
 			if len(dom.Records) == 0 {
 				delete(s.Domains, domain)
 				_, _ = tx.Exec("DELETE FROM domains WHERE id = ?", domID)
 			}
 		}
-		_ = tx.Commit()
+		return tx.Commit()
 	}
+	return nil
 }
 
 // UpdateDDNS 通过 Token 更新动态 IP (同步更新数据库)
@@ -659,9 +750,202 @@ func (s *MemoryStore) UpdateDDNS(token, ip string) (string, error) {
 	return fqdn + " (" + strings.ToUpper(isp) + ")", nil
 }
 
+// RegisterUser 注册新用户
+func (s *MemoryStore) RegisterUser(username, password, role string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
+
+	var exists int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM users WHERE username = ?", username).Scan(&exists)
+	if err != nil {
+		return err
+	}
+	if exists > 0 {
+		return fmt.Errorf("用户名已被占用")
+	}
+
+	_, err = s.db.Exec("INSERT INTO users (username, password_hash, role) VALUES (?, ?, ?)", username, password, role)
+	return err
+}
+
+// CreateSession 创建用户 Session Token 并入库
+func (s *MemoryStore) CreateSession(username, password string) (string, string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return "", "", fmt.Errorf("数据库未初始化")
+	}
+
+	var userID int64
+	var role string
+	err := s.db.QueryRow("SELECT id, role FROM users WHERE username = ? AND password_hash = ?", username, password).Scan(&userID, &role)
+	if err != nil {
+		return "", "", fmt.Errorf("用户名或密码错误")
+	}
+
+	// 随机生成 32 字符的十六进制 Token
+	tokenBytes := make([]byte, 16)
+	_, _ = rand.Read(tokenBytes)
+	token := hex.EncodeToString(tokenBytes)
+
+	// Session 过期时间：7天
+	expiresAt := time.Now().Add(7 * 24 * time.Hour).Unix()
+
+	_, err = s.db.Exec("INSERT INTO user_sessions (token, user_id, expires_at) VALUES (?, ?, ?)", token, userID, expiresAt)
+	if err != nil {
+		return "", "", err
+	}
+
+	return token, role, nil
+}
+
+// AuthenticateToken 认证会话 Token，返回用户对象
+func (s *MemoryStore) AuthenticateToken(token string) (*User, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
+	}
+
+	var u User
+	var expiresAt int64
+	query := `
+	SELECT u.id, u.username, u.role, s.expires_at 
+	FROM user_sessions s
+	JOIN users u ON s.user_id = u.id
+	WHERE s.token = ?
+	`
+	err := s.db.QueryRow(query, token).Scan(&u.ID, &u.Username, &u.Role, &expiresAt)
+	if err != nil {
+		return nil, fmt.Errorf("会话 Token 无效")
+	}
+
+	if time.Now().Unix() > expiresAt {
+		return nil, fmt.Errorf("登录会话已过期，请重新登录")
+	}
+
+	return &u, nil
+}
+
+// DestroySession 注销 Session
+func (s *MemoryStore) DestroySession(token string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return nil
+	}
+
+	_, err := s.db.Exec("DELETE FROM user_sessions WHERE token = ?", token)
+	return err
+}
+
+// UpdateUserPassword 修改用户密码
+func (s *MemoryStore) UpdateUserPassword(userID int64, oldPass, newPass string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.db == nil {
+		return fmt.Errorf("数据库未初始化")
+	}
+
+	var count int
+	err := s.db.QueryRow("SELECT COUNT(*) FROM users WHERE id = ? AND password_hash = ?", userID, oldPass).Scan(&count)
+	if err != nil || count == 0 {
+		return fmt.Errorf("当前密码错误")
+	}
+
+	_, err = s.db.Exec("UPDATE users SET password_hash = ? WHERE id = ?", newPass, userID)
+	return err
+}
+
+// GenerateDDNSToken 为用户域名生成新的 DDNS Token
+func (s *MemoryStore) GenerateDDNSToken(userID int64, role string, fqdn, isp string) (string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	var domain string
+	for dom := range s.Domains {
+		if fqdn == dom || strings.HasSuffix(fqdn, "."+dom) {
+			domain = dom
+			break
+		}
+	}
+	if domain == "" {
+		return "", fmt.Errorf("该域名未在本系统托管")
+	}
+
+	domObj := s.Domains[domain]
+	if role != "admin" && domObj.OwnerID != userID {
+		return "", fmt.Errorf("无权限为该域名生成 DDNS Token")
+	}
+
+	tokenBytes := make([]byte, 16)
+	_, _ = rand.Read(tokenBytes)
+	token := "ddns_tok_" + hex.EncodeToString(tokenBytes)[:16]
+
+	target := fqdn + "_" + isp
+	s.Tokens[token] = target
+
+	if s.db != nil {
+		_, err := s.db.Exec("INSERT OR REPLACE INTO ddns_tokens (token, record_info) VALUES (?, ?)", token, target)
+		if err != nil {
+			return "", err
+		}
+	}
+	return token, nil
+}
+
+// DeleteDDNSToken 删除指定 Token
+func (s *MemoryStore) DeleteDDNSToken(userID int64, role string, token string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	target, exists := s.Tokens[token]
+	if !exists {
+		return fmt.Errorf("Token 不存在")
+	}
+
+	parts := strings.Split(target, "_")
+	if len(parts) < 2 {
+		return fmt.Errorf("Token 格式损坏")
+	}
+	fqdn := parts[0]
+
+	var domain string
+	for dom := range s.Domains {
+		if fqdn == dom || strings.HasSuffix(fqdn, "."+dom) {
+			domain = dom
+			break
+		}
+	}
+
+	if domain != "" {
+		domObj := s.Domains[domain]
+		if role != "admin" && domObj.OwnerID != userID {
+			return fmt.Errorf("无权限删除该域名下的 Token")
+		}
+	}
+
+	delete(s.Tokens, token)
+
+	if s.db != nil {
+		_, err := s.db.Exec("DELETE FROM ddns_tokens WHERE token = ?", token)
+		return err
+	}
+	return nil
+}
+
 func (s *MemoryStore) initDefaultData() {
 	s.Domains["example.com"] = &DomainRecords{
-		TTL: 60,
+		OwnerID: 1, // 默认为 admin 拥有
+		TTL:     60,
 		Records: map[string][]DNSRecord{
 			"www_A": {
 				{Subdomain: "www", Type: "A", ISP: "ct", Values: []string{"1.1.1.1"}, TTL: 60},

@@ -27,6 +27,7 @@ func main() {
 	webUser := flag.String("web-user", "admin", "Web 管理面板登录用户名")
 	webPass := flag.String("web-pass", "admin123", "Web 管理面板登录密码")
 	nsNodes := flag.String("ns-nodes", "ns1.cngoodok.org,ns2.cngoodok.org", "当前集群的 NS 解析节点列表 (以逗号分隔)")
+	openReg := flag.Bool("open-registration", false, "是否启用多用户注册与隔离模式（开放注册功能）")
 
 	// 节点同步模式参数
 	syncMode := flag.Bool("sync-mode", false, "启用节点同步模式（仅作为解析节点，从控制端 API 同步记录）")
@@ -42,6 +43,9 @@ func main() {
 	}
 	if envPass := os.Getenv("TRINET_WEB_PASS"); envPass != "" {
 		*webPass = envPass
+	}
+	if envOpenReg := os.Getenv("TRINET_OPEN_REGISTRATION"); envOpenReg == "true" {
+		*openReg = true
 	}
 
 	log.Println("[SYSTEM] TriNet DNS (三网智能解析) 系统正在初始化...")
@@ -83,7 +87,7 @@ func main() {
 		go startSyncAgent(recordStore, *syncURL, *syncToken, *syncInterval)
 	} else {
 		u, p := recordStore.GetCredentials()
-		webServer := web.NewWebServer(*webAddr, recordStore, logChan, u, p, *syncToken, *nsNodes)
+		webServer := web.NewWebServer(*webAddr, recordStore, logChan, u, p, *syncToken, *nsNodes, *openReg)
 		webServer.Start()
 	}
 

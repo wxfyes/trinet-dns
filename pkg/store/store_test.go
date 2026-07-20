@@ -128,3 +128,137 @@ func TestMemoryStoreMigration(t *testing.T) {
 		t.Error("Expected JSON.bak file to exist")
 	}
 }
+
+func TestMemoryStoreMultiUser(t *testing.T) {
+	dbPath := "test_multiuser.db"
+	_ = os.Remove(dbPath)
+	defer os.Remove(dbPath)
+
+	store := NewMemoryStore(dbPath)
+	if store == nil {
+		t.Fatal("Failed to create memory store")
+	}
+
+	// 1. 测试注册用户
+	err := store.RegisterUser("user1", "pass123", "user")
+	if err != nil {
+		t.Fatalf("Failed to register user1: %s", err)
+	}
+
+	// 再次注册同名用户应该报错
+	err = store.RegisterUser("user1", "pass123", "user")
+	if err == nil {
+		t.Fatal("Expected error when registering duplicate username, got nil")
+	}
+
+	// 2. 测试登录与会话创建
+	token, role, err := store.CreateSession("user1", "pass123")
+	if err != nil {
+		t.Fatalf("Failed to create session: %s", err)
+	}
+	if role != "user" {
+		t.Errorf("Expected role 'user', got '%s'", role)
+	}
+	if token == "" {
+		t.Fatal("Expected non-empty token")
+	}
+
+	// 3. 测试 Token 认证
+	user, err := store.AuthenticateToken(token)
+	if err != nil {
+		t.Fatalf("Failed to authenticate token: %s", err)
+	}
+	if user.Username != "user1" || user.Role != "user" {
+		t.Errorf("Authenticated user mismatch: %+v", user)
+	}
+
+	// 4. 测试修改密码
+	err = store.UpdateUserPassword(user.ID, "wrong_pass", "new_pass")
+	if err == nil {
+		t.Fatal("Expected error when changing password with wrong current password")
+	}
+	err = store.UpdateUserPassword(user.ID, "pass123", "new_pass")
+	if err != nil {
+		t.Fatalf("Failed to change password: %s", err)
+	}
+	// 验证旧密码不可登录，新密码可登录
+	_, _, err = store.CreateSession("user1", "pass123")
+	if err == nil {
+		t.Fatal("Expected login failure with old password after change")
+	}
+	token2, _, err := store.CreateSession("user1", "new_pass")
+	if err != nil {
+		t.Fatalf("Failed to login with new password: %s", err)
+	}
+	if token2 == "" {
+		t.Fatal("Expected non-empty token2")
+	}
+
+	// 5. 测试多用户数据隔离与带权限的解析管理
+	// 注册另一个普通用户 user2
+	err = store.RegisterUser("user2", "pass456", "user")
+	if err != nil {
+		t.Fatal(err)
+	}
+	token3, _, _ := store.CreateSession("user2", "pass456")
+	u2, _ := store.AuthenticateToken(token3)
+
+	// user1 添加域名和记录
+	err = store.AddRecordWithAuth(user.ID, user.Role, "user1domain.com", "www", "A", "def", []string{"1.1.1.1"}, 600)
+	if err != nil {
+		t.Fatalf("user1 failed to add record: %s", err)
+	}
+
+	// user2 试图往 user1domain.com 添加或删除记录，应当被拒
+	err = store.AddRecordWithAuth(u2.ID, u2.Role, "user1domain.com", "api", "A", "def", []string{"2.2.2.2"}, 600)
+	if err == nil {
+		t.Fatal("Expected error when user2 writes to user1's domain")
+	}
+	err = store.DeleteRecordWithAuth(u2.ID, u2.Role, "user1domain.com", "www", "A", "def")
+	if err == nil {
+		t.Fatal("Expected error when user2 deletes from user1's domain")
+	}
+
+	// 6. 测试数据过滤隔离
+	// 获取 user1 的可见数据
+	data1 := store.GetUserData(user.ID, user.Role)
+	if _, exists := data1.Domains["user1domain.com"]; !exists {
+		t.Error("user1 should see their own domain")
+	}
+
+	// 获取 user2 的可见数据
+	data2 := store.GetUserData(u2.ID, u2.Role)
+	if _, exists := data2.Domains["user1domain.com"]; exists {
+		t.Error("user2 should NOT see user1's domain")
+	}
+
+	// 7. 测试 DDNS Token 生成、隔离与删除
+	ddnsTok, err := store.GenerateDDNSToken(user.ID, user.Role, "www.user1domain.com", "ct")
+	if err != nil {
+		t.Fatalf("Failed to generate DDNS token for user1: %s", err)
+	}
+	
+	// user2 应当看不到该 Token
+	data2_toks := store.GetUserData(u2.ID, u2.Role).Tokens
+	if _, exists := data2_toks[ddnsTok]; exists {
+		t.Error("user2 should NOT see user1's DDNS Token")
+	}
+
+	// user1 应当能看到该 Token
+	data1_toks := store.GetUserData(user.ID, user.Role).Tokens
+	if _, exists := data1_toks[ddnsTok]; !exists {
+		t.Error("user1 should see their own DDNS Token")
+	}
+
+	// user2 试图删除 user1 的 Token 应当报错
+	err = store.DeleteDDNSToken(u2.ID, u2.Role, ddnsTok)
+	if err == nil {
+		t.Fatal("Expected error when user2 deletes user1's DDNS Token")
+	}
+
+	// user1 删除 Token
+	err = store.DeleteDDNSToken(user.ID, user.Role, ddnsTok)
+	if err != nil {
+		t.Fatalf("Failed to delete token: %s", err)
+	}
+}

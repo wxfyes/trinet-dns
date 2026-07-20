@@ -14,8 +14,9 @@
     <div id="login-overlay" class="login-overlay">
         <div class="login-box">
             <span class="login-logo">🦅</span>
-            <h2>TriNet DNS</h2>
-            <p>三网智能解析控制台</p>
+            <h2 id="login-box-title">TriNet DNS</h2>
+            <p id="login-box-desc">三网智能解析控制台</p>
+            <!-- 登录表单 -->
             <form id="login-form" onsubmit="handleLoginSubmit(event)">
                 <div class="form-group">
                     <label for="login-username">用户名</label>
@@ -25,7 +26,29 @@
                     <label for="login-password">密码</label>
                     <input type="password" id="login-password" required class="form-control" autocomplete="current-password">
                 </div>
-                <button type="submit" class="btn btn-primary">登 录</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">登 录</button>
+                <div style="text-align: center; margin-top: 12px; display: none;" id="reg-link-container">
+                    <a href="javascript:void(0)" onclick="toggleLoginReg(true)" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">还没有账号？立即注册</a>
+                </div>
+            </form>
+            <!-- 注册表单 -->
+            <form id="register-form" onsubmit="handleRegisterSubmit(event)" style="display: none;">
+                <div class="form-group">
+                    <label for="register-username">用户名</label>
+                    <input type="text" id="register-username" required class="form-control" autocomplete="username">
+                </div>
+                <div class="form-group">
+                    <label for="register-password">密码</label>
+                    <input type="password" id="register-password" required class="form-control" autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm">确认密码</label>
+                    <input type="password" id="register-confirm" required class="form-control" autocomplete="new-password">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">注 册</button>
+                <div style="text-align: center; margin-top: 12px;">
+                    <a href="javascript:void(0)" onclick="toggleLoginReg(false)" style="color: var(--primary-color); text-decoration: none; font-size: 0.9rem;">已有账号？返回登录</a>
+                </div>
             </form>
         </div>
     </div>
@@ -324,6 +347,38 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">取消</button>
                         <button type="submit" class="btn btn-primary">保存修改</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 生成 DDNS Token 模态弹窗 -->
+    <div class="modal-overlay" id="ddns-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>生成 DDNS Token</h3>
+                <button class="modal-close" onclick="closeDdnsModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <form id="ddns-form" onsubmit="saveDdnsToken(event)">
+                    <div class="form-group">
+                        <label for="ddns-input-fqdn">完整主机域名 (FQDN)</label>
+                        <input type="text" id="ddns-input-fqdn" placeholder="例如: fqdn.example.com" required class="form-control font-mono">
+                        <small style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; display: block;">必须是在解析列表中已添加的二级子域名记录</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="ddns-select-isp">解析线路</label>
+                        <select id="ddns-select-isp" class="form-control">
+                            <option value="def">默认 (Default)</option>
+                            <option value="ct">中国电信 (CT)</option>
+                            <option value="cu">中国联通 (CU)</option>
+                            <option value="cm">中国移动 (CM)</option>
+                        </select>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="closeDdnsModal()">取消</button>
+                        <button type="submit" class="btn btn-primary">生成</button>
                     </div>
                 </form>
             </div>
