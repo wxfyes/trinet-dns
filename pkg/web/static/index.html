@@ -387,30 +387,35 @@ TOKEN_CT="[填写电信线路Token]"   # 中国电信 (CT)
 TOKEN_CU="[填写联通线路Token]"   # 中国联通 (CU)
 TOKEN_CM="[填写移动线路Token]"   # 中国移动 (CM)
 
-echo "[INFO] 正在抓取 HostMonit 开源源最新三网优选 IP..."
-API_DATA=$(curl -s -X POST "https://api.hostmonit.com/get_optimization_ip" -H "Content-Type: application/json" -d '{"key":"i@hostmonit.com"}')
+echo "[INFO] 正在调用专业 API 抓取全网最新三网优选 IP..."
+API_DATA=$(curl -s "https://jkapi.com/api/cf_best?server=1&type=v4")
 
-CT_IP=$(echo "$API_DATA" | grep -oE '"CM"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
-CU_IP=$(echo "$API_DATA" | grep -oE '"CU"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
-CM_IP=$(echo "$API_DATA" | grep -oE '"CT"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+# 从 jkapi 接口精准提取电信 (CT)、联通 (CU)、移动 (CM) 最佳 IP
+CT_IP=$(echo "$API_DATA" | grep -oE '"CT":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+CU_IP=$(echo "$API_DATA" | grep -oE '"CU":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+CM_IP=$(echo "$API_DATA" | grep -oE '"CM":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
 
-# 如果 HostMonit 接口备用回退，使用 164746 开源库
-if [ -z "$CT_IP" ]; then
-    BACKUP_IPS=$(curl -s https://ip.164746.xyz/ | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 3)
-    CT_IP=$(echo "$BACKUP_IPS" | sed -n '1p')
-    CU_IP=$(echo "$BACKUP_IPS" | sed -n '2p')
-    CM_IP=$(echo "$BACKUP_IPS" | sed -n '3p')
+# 如果主 API 超时，自动回退备用源
+if [ -z "$CT_IP" ] || [ -z "$CU_IP" ] || [ -z "$CM_IP" ]; then
+    echo "[WARN] 主源未响应，切换备用源抓取..."
+    IPS=$(curl -s https://ip.164746.xyz/ | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
+    [ -z "$CT_IP" ] && CT_IP=$(echo "$IPS" | sed -n '1p')
+    [ -z "$CU_IP" ] && CU_IP=$(echo "$IPS" | sed -n '2p')
+    [ -z "$CM_IP" ] && CM_IP=$(echo "$IPS" | sed -n '3p')
 fi
 
 [ -z "$CT_IP" ] && CT_IP="104.16.1.1"
 [ -z "$CU_IP" ] && CU_IP="104.17.2.2"
 [ -z "$CM_IP" ] && CM_IP="104.18.3.3"
 
-echo "[SUCCESS] 抓取结果: 电信->$CT_IP, 联通->$CU_IP, 移动->$CM_IP"
+echo "[SUCCESS] 抓取完成！"
+echo "  - ⚡ 电信最佳 IP: $CT_IP"
+echo "  - ⚡ 联通最佳 IP: $CU_IP"
+echo "  - ⚡ 移动最佳 IP: $CM_IP"
 
-[ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$CT_IP"
-[ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$CU_IP"
-[ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$CM_IP"
+[ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$CT_IP" && echo "  ✅ 电信解析记录已更新"
+[ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$CU_IP" && echo "  ✅ 联通解析记录已更新"
+[ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$CM_IP" && echo "  ✅ 移动解析记录已更新"
 
 echo "[ALL DONE] 三网解析记录已成功推送到面板！"</code>
                                     </div>
