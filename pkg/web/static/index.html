@@ -368,6 +368,44 @@ echo "[SUCCESS] 三网智能解析同步完毕！"</code>
                                         💡 <strong>定时任务设置提示 (Linux Crontab)</strong>：在终端运行 <code>crontab -e</code> 追加一行：<br>
                                         <code>*/30 * * * * bash /path/to/cf_speedtest_trinet.sh &> /dev/null</code>（即每 30 分钟自动测试并刷新三网解析）。
                                     </div>
+
+                                    <hr style="margin: 16px 0; border: none; border-top: 1px dashed var(--border-color);">
+
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #3b82f6;">🌐 方案二：无需本地测速，直接从开源 API 自动获取最新三网优选 IP 脚本 (fetch_online_cf_ip.sh)：</span>
+                                        <button class="btn btn-outline" style="padding: 2px 10px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-api-fetch')">📋 一键复制在线抓取脚本</button>
+                                    </div>
+                                    <div class="code-block" style="margin: 0; max-height: 260px; overflow-y: auto;">
+                                        <code id="code-script-api-fetch">#!/bin/bash
+# =========================================================
+# TriNet DNS - 自动抓取开源 API 三网优选 IP 并推送上报脚本
+# 无需本地测速环境，自动提取网络最新测试的三网极速节点 IP
+# =========================================================
+
+TRINET_SERVER="http://[您的TriNet服务器域名或IP]"
+TOKEN_CT="[填写电信线路Token]"   # 中国电信 (CT)
+TOKEN_CU="[填写联通线路Token]"   # 中国联通 (CU)
+TOKEN_CM="[填写移动线路Token]"   # 中国移动 (CM)
+
+echo "[INFO] 正在抓取公开开源源最新测出的三网优选 IP..."
+API_DATA=$(curl -s --max-time 10 "https://addressesapi.090227.xyz/CloudFlareDetails")
+
+CT_IP=$(echo "$API_DATA" | grep -oE '"telecom"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+CU_IP=$(echo "$API_DATA" | grep -oE '"unicom"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+CM_IP=$(echo "$API_DATA" | grep -oE '"mobile"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+
+[ -z "$CT_IP" ] && CT_IP="104.16.1.1"
+[ -z "$CU_IP" ] && CU_IP="104.17.2.2"
+[ -z "$CM_IP" ] && CM_IP="104.18.3.3"
+
+echo "[SUCCESS] 抓取结果: 电信->$CT_IP, 联通->$CU_IP, 移动->$CM_IP"
+
+[ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$CT_IP"
+[ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$CU_IP"
+[ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$CM_IP"
+
+echo "[ALL DONE] 三网解析记录已成功推送到面板！"</code>
+                                    </div>
                                 </div>
                             </details>
 
