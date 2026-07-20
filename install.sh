@@ -275,7 +275,41 @@ install_agent() {
     fi
     chmod +x "$INSTALL_DIR/trinet-dns"
     echo "$LATEST_TAG" > "$CONF_DIR/version"
-    echo -e "✓ 主程序安装成功"
+    echo -e "正在配置三网 IP 路由更新规则..."
+    cat << 'EOF' > "$CONF_DIR/update_geoip.sh"
+#!/bin/bash
+OUTPUT_FILE="/etc/trinet-dns/geoip_rules.txt"
+TEMP_DIR="/tmp/trinet_geoip"
+mkdir -p $TEMP_DIR
+BASE_URL="https://cdn.jsdelivr.net/gh/gaoyifan/china-operator-ip@ip-lists"
+
+echo "Downloading latest ISP IP ranges..."
+curl -s -o "$TEMP_DIR/chinanet.txt" "$BASE_URL/chinanet.txt"
+curl -s -o "$TEMP_DIR/unicom.txt" "$BASE_URL/unicom.txt"
+curl -s -o "$TEMP_DIR/cmcc.txt" "$BASE_URL/cmcc.txt"
+
+echo "# TriNet DNS Auto ISP Routing Rules" > $OUTPUT_FILE
+echo "# Updated: $(date '+%Y-%m-%d %H:%M:%S')" >> $OUTPUT_FILE
+echo "" >> $OUTPUT_FILE
+
+if [ -f "$TEMP_DIR/chinanet.txt" ]; then
+    awk '{print $1 " ct"}' "$TEMP_DIR/chinanet.txt" >> $OUTPUT_FILE
+fi
+if [ -f "$TEMP_DIR/unicom.txt" ]; then
+    awk '{print $1 " cu"}' "$TEMP_DIR/unicom.txt" >> $OUTPUT_FILE
+fi
+if [ -f "$TEMP_DIR/cmcc.txt" ]; then
+    awk '{print $1 " cm"}' "$TEMP_DIR/cmcc.txt" >> $OUTPUT_FILE
+fi
+rm -rf $TEMP_DIR
+echo "✓ ISP Rules updated at $OUTPUT_FILE"
+EOF
+
+    chmod +x "$CONF_DIR/update_geoip.sh"
+    cd $CONF_DIR && ./update_geoip.sh && cd - > /dev/null
+
+    CRON_JOB="0 3 * * * $CONF_DIR/update_geoip.sh && systemctl restart trinet-dns"
+    (crontab -l 2>/dev/null | grep -Fv "$CONF_DIR/update_geoip.sh"; echo "$CRON_JOB") | crontab -
 
     echo -e "正在配置 Systemd 节点守护服务..."
     cat << EOF > $SERVICE_FILE
