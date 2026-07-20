@@ -33,9 +33,27 @@ function checkLogin() {
         appContainer.style.display = 'flex';
         
         if (role === 'admin') {
-            if (menuSettings) menuSettings.style.display = 'block';
+            if (menuSettings) menuSettings.style.display = 'flex';
         } else {
             if (menuSettings) menuSettings.style.display = 'none';
+        }
+
+        // 若本地角色缓存缺失，自动向后端拉取校准，避免历史会话没有缓存 role 字段导致菜单隐藏
+        if (!role) {
+            fetchAPI('/api/user/billing')
+                .then(res => {
+                    if (res.ok) return res.json();
+                    throw new Error('Failed to fetch profile');
+                })
+                .then(data => {
+                    if (data.role) {
+                        localStorage.setItem('trinet_role', data.role);
+                        if (menuSettings) {
+                            menuSettings.style.display = data.role === 'admin' ? 'flex' : 'none';
+                        }
+                    }
+                })
+                .catch(err => console.error('自动拉取用户角色失败:', err));
         }
         
         loadRecords();
