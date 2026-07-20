@@ -59,12 +59,24 @@ detect_arch() {
     echo -e "✓ 系统架构检测成功: ${GREEN}$ARCH${NC}"
 }
 
+get_latest_tag() {
+    # 1. 优先通过 GitHub Releases Latest 的重定向 URL 中提取最新 Tag（不受 API Rate Limit 限制，实时性最高，绕过 CDN 缓存）
+    local redirect_url=$(curl -sIL -o /dev/null -w %{url_effective} "https://github.com/$GITHUB_REPO/releases/latest")
+    local tag=$(echo "$redirect_url" | awk -F'/' '{print $NF}' | tr -d '\r' | tr -d '\n')
+    
+    # 2. 如果重定向解析失败，则从 GitHub API 列表中实时提取（增加随机时间戳防缓存）
+    if [[ -z "$tag" || "$tag" == "latest" ]]; then
+        tag=$(curl -s "https://api.github.com/repos/$GITHUB_REPO/releases?per_page=1&t=$(date +%s)" | grep -m 1 '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    fi
+    echo "$tag"
+}
+
 install_trinet() {
     check_dependencies
     detect_arch
 
     echo -e "正在连接 GitHub 获取最新版本信息 (仓库: $GITHUB_REPO)..."
-    LATEST_TAG=$(curl -s "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    LATEST_TAG=$(get_latest_tag)
 
     if [ -z "$LATEST_TAG" ]; then
         echo -e "${RED}错误: 无法获取最新版本信息，请确认仓库路径是否正确或是否存在已发布的 Release。${NC}"
@@ -79,21 +91,27 @@ install_trinet() {
 
     mkdir -p $CONF_DIR
 
-    if systemctl is-active --quiet trinet-dns; then
-        echo "正在停止运行中的 TriNet DNS 服务以进行升级..."
-        systemctl stop trinet-dns
-    fi
-
     echo -e "正在下载二进制主程序..."
-    wget -q --show-progress -O "$INSTALL_DIR/trinet-dns" "$DOWNLOAD_URL"
+    local temp_file="/tmp/trinet-dns-new"
+    wget -q --show-progress -O "$temp_file" "$DOWNLOAD_URL"
     if [ $? -ne 0 ]; then
         echo -e "${RED}错误: 主程序下载失败，请检查网络或 $DOWNLOAD_URL${NC}"
+        rm -f "$temp_file"
         read -p "按回车返回主菜单..."
         show_menu
         return
     fi
+
+    # 下载成功后再停止服务，实现秒级无感热升级（同时避免 Text file busy）
+    if systemctl is-active --quiet trinet-dns; then
+        echo "正在停止运行中的 TriNet DNS 服务以进行升级..."
+        systemctl stop trinet-dns
+        sleep 1
+    fi
+
+    mv "$temp_file" "$INSTALL_DIR/trinet-dns"
     chmod +x "$INSTALL_DIR/trinet-dns"
-    echo -e "✓ 主程序下载成功: ${GREEN}$INSTALL_DIR/trinet-dns${NC}"
+    echo -e "✓ 主程序更新成功: ${GREEN}$INSTALL_DIR/trinet-dns${NC}"
 
     # 写入版本号文件供查询
     echo "$LATEST_TAG" > "$CONF_DIR/version"
@@ -267,7 +285,7 @@ install_agent() {
     detect_arch
 
     echo -e "正在连接 GitHub 获取最新版本信息 (仓库: $GITHUB_REPO)..."
-    LATEST_TAG=$(curl -s "https://api.github.com/repos/$GITHUB_REPO/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+    LATEST_TAG=$(get_latest_tag)
     if [ -z "$LATEST_TAG" ]; then
         echo -e "${RED}错误: 无法获取最新版本信息。${NC}"
         read -p "按回车返回主菜单..."
@@ -299,18 +317,23 @@ install_agent() {
         echo "$AGENT_SYNC_TOKEN" > "$CONF_DIR/sync_token"
     fi
 
-    if systemctl is-active --quiet trinet-dns; then
-        echo "正在停止运行中的 TriNet DNS 服务以进行升级..."
-        systemctl stop trinet-dns
-    fi
-
     echo -e "正在下载二进制主程序..."
-    wget -q --show-progress -O "$INSTALL_DIR/trinet-dns" "$DOWNLOAD_URL"
+    local temp_file="/tmp/trinet-dns-new"
+    wget -q --show-progress -O "$temp_file" "$DOWNLOAD_URL"
     if [ $? -ne 0 ]; then
         echo -e "${RED}错误: 主程序下载失败，请检查网络连接。${NC}"
+        rm -f "$temp_file"
         read -p "按回车返回主菜单..."
         show_menu; return
     fi
+
+    if systemctl is-active --quiet trinet-dns; then
+        echo "正在停止运行中的 TriNet DNS 服务以进行升级..."
+        systemctl stop trinet-dns
+        sleep 1
+    fi
+
+    mv "$temp_file" "$INSTALL_DIR/trinet-dns"
     chmod +x "$INSTALL_DIR/trinet-dns"
     echo "$LATEST_TAG" > "$CONF_DIR/version"
     echo -e "正在配置三网 IP 路由更新规则..."
@@ -399,7 +422,7 @@ show_menu() {
     echo -e "当前版本: ${GREEN}$(cat $CONF_DIR/version 2>/dev/null || echo "未安装/未知")${NC}"
     echo -e "服务状态: ${GREEN}$(systemctl is-active trinet-dns 2>/dev/null || echo "未运行")${NC}"
     echo -e "${BLUE}----------------------------------------------------${NC}"
-    echo -e " 1. ${GREEN}安装 / 更新主控${NC} (独立模式 + Web 管理面板)"
+    echo -e " 1. ${GREEN}安装 / 更新主控${NC} (从 GitHub Release 下载预编译版本)"
     echo -e " 2. ${GREEN}安装节点 Agent${NC} (同步模式，从主控同步解析记录)"
     echo -e " 3. ${RED}完全卸载${NC} TriNet DNS"
     echo -e " 4. 启动 DNS 服务"
