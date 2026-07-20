@@ -509,6 +509,43 @@ func (s *MemoryStore) GetUserData(userID int64, role string) PublicStoreData {
 	}
 }
 
+// GetUserTokens 获取指定用户拥有的 DDNS Tokens
+func (s *MemoryStore) GetUserTokens(userID int64, role string) map[string]string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if role == "admin" {
+		res := make(map[string]string)
+		for k, v := range s.Tokens {
+			res[k] = v
+		}
+		return res
+	}
+
+	filteredDomains := make(map[string]bool)
+	for name, dom := range s.Domains {
+		if dom.OwnerID == userID {
+			filteredDomains[name] = true
+		}
+	}
+
+	filteredTokens := make(map[string]string)
+	for token, target := range s.Tokens {
+		lastIdx := strings.LastIndex(target, "_")
+		if lastIdx > 0 {
+			fqdn := target[:lastIdx]
+			for domName := range filteredDomains {
+				if fqdn == domName || strings.HasSuffix(fqdn, "."+domName) {
+					filteredTokens[token] = target
+					break
+				}
+			}
+		}
+	}
+
+	return filteredTokens
+}
+
 // GetDomains 获取所有已托管域名
 func (s *MemoryStore) GetDomains() []string {
 	s.mu.RLock()

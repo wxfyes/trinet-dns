@@ -554,6 +554,13 @@ func (ws *WebServer) handleDDNSToken(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	switch r.Method {
+	case http.MethodGet:
+		tokens := ws.store.GetUserTokens(user.ID, user.Role)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "success",
+			"tokens": tokens,
+		})
+
 	case http.MethodPost:
 		var req struct {
 			FQDN string `json:"fqdn"`

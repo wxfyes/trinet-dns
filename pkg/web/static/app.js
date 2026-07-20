@@ -534,46 +534,58 @@ function renderRecordsTable(data) {
     }
 }
 
-// 渲染 DDNS 表格
-function loadDDNSTable() {
+// 渲染 DDNS 表格 (独立向 API 获取最新的可靠数据)
+async function loadDDNSTable() {
     const tbody = document.querySelector('#tab-ddns tbody');
-    tbody.innerHTML = '';
+    if (!tbody) return;
 
-    const tokens = globalData.tokens || {};
-    if (Object.keys(tokens).length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-light)">暂无动态 DNS 配置</td></tr>';
-        return;
-    }
+    try {
+        const res = await fetchAPI('/api/ddns/token');
+        if (!res.ok) throw new Error('无法连接到 Token API');
+        const data = await res.json();
 
-    const ispNameMap = {
-        'ct': '电信 (CT)',
-        'cu': '联通 (CU)',
-        'cm': '移动 (CM)',
-        'def': '默认 (DEF)'
-    };
+        tbody.innerHTML = '';
+        const tokens = data.tokens || {};
+        if (Object.keys(tokens).length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: var(--text-light)">暂无动态 DNS 配置</td></tr>';
+            return;
+        }
 
-    for (const [token, target] of Object.entries(tokens)) {
-        // target 格式: www.example.com_ct
-        const parts = target.split('_');
-        const fqdn = parts[0];
-        const isp = parts[1] || 'def';
+        const ispNameMap = {
+            'ct': '电信 (CT)',
+            'cu': '联通 (CU)',
+            'cm': '移动 (CM)',
+            'def': '默认 (DEF)'
+        };
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td class="font-mono">${escapeHTML(fqdn)}</td>
-            <td><span class="isp-dot ${isp}"></span>${ispNameMap[isp] || isp}</td>
-            <td class="font-mono">
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <span style="font-size: 0.85rem; background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 4px; font-weight: 600; font-family: monospace;">${escapeHTML(token)}</span>
-                    <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem; white-space: nowrap;" onclick="copyTextToClipboard('${token}')">📋 复制 Token</button>
-                </div>
-            </td>
-            <td>-</td>
-            <td>
-                <button class="btn btn-text danger" onclick="deleteToken('${token}')">删除</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
+        for (const [token, target] of Object.entries(tokens)) {
+            const lastIdx = target.lastIndexOf('_');
+            let fqdn = target;
+            let isp = 'def';
+            if (lastIdx > 0) {
+                fqdn = target.substring(0, lastIdx);
+                isp = target.substring(lastIdx + 1);
+            }
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="font-mono">${escapeHTML(fqdn)}</td>
+                <td><span class="isp-dot ${isp}"></span>${ispNameMap[isp] || isp}</td>
+                <td class="font-mono">
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <span style="font-size: 0.85rem; background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 4px; font-weight: 600; font-family: monospace;">${escapeHTML(token)}</span>
+                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem; white-space: nowrap;" onclick="copyTextToClipboard('${token}')">📋 复制 Token</button>
+                    </div>
+                </td>
+                <td>-</td>
+                <td>
+                    <button class="btn btn-text danger" onclick="deleteToken('${token}')">删除</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+    } catch (err) {
+        console.error('加载 DDNS 表格失败:', err);
     }
 }
 
@@ -605,7 +617,8 @@ async function saveDdnsToken(event) {
             const data = await res.json();
             alert(`Token 生成成功!\nToken 值: ${data.token}\n请务必复制保存此 Token，关闭后将无法再次查看！`);
             closeDdnsModal();
-            await loadRecords(); // 刷新以显示新生成的 Token
+            loadDDNSTable();
+            loadRecords();
         } else {
             const data = await res.json();
             alert('生成失败: ' + (data.error || '未知错误'));
@@ -627,7 +640,8 @@ async function deleteToken(token) {
 
         if (res.ok) {
             alert('Token 删除成功');
-            await loadRecords();
+            loadDDNSTable();
+            loadRecords();
         } else {
             const data = await res.json();
             alert('删除失败: ' + (data.error || '未知错误'));
