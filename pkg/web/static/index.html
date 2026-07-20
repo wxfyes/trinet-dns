@@ -387,12 +387,20 @@ TOKEN_CT="[填写电信线路Token]"   # 中国电信 (CT)
 TOKEN_CU="[填写联通线路Token]"   # 中国联通 (CU)
 TOKEN_CM="[填写移动线路Token]"   # 中国移动 (CM)
 
-echo "[INFO] 正在抓取公开开源源最新测出的三网优选 IP..."
-API_DATA=$(curl -s --max-time 10 "https://addressesapi.090227.xyz/CloudFlareDetails")
+echo "[INFO] 正在抓取 HostMonit 开源源最新三网优选 IP..."
+API_DATA=$(curl -s -X POST "https://api.hostmonit.com/get_optimization_ip" -H "Content-Type: application/json" -d '{"key":"i@hostmonit.com"}')
 
-CT_IP=$(echo "$API_DATA" | grep -oE '"telecom"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
-CU_IP=$(echo "$API_DATA" | grep -oE '"unicom"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
-CM_IP=$(echo "$API_DATA" | grep -oE '"mobile"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+CT_IP=$(echo "$API_DATA" | grep -oE '"CM"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+CU_IP=$(echo "$API_DATA" | grep -oE '"CU"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+CM_IP=$(echo "$API_DATA" | grep -oE '"CT"[^}]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
+
+# 如果 HostMonit 接口备用回退，使用 164746 开源库
+if [ -z "$CT_IP" ]; then
+    BACKUP_IPS=$(curl -s https://ip.164746.xyz/ | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 3)
+    CT_IP=$(echo "$BACKUP_IPS" | sed -n '1p')
+    CU_IP=$(echo "$BACKUP_IPS" | sed -n '2p')
+    CM_IP=$(echo "$BACKUP_IPS" | sed -n '3p')
+fi
 
 [ -z "$CT_IP" ] && CT_IP="104.16.1.1"
 [ -z "$CU_IP" ] && CU_IP="104.17.2.2"
