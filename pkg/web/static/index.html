@@ -263,20 +263,186 @@
                             </table>
                         </div>
 
-                        <h3 class="margin-top">客户端更新示例 (Shell Curl & 自动测速)</h3>
-                        <div class="code-block" style="margin-bottom: 12px;">
-                            <div style="color: var(--primary-color); font-weight: 600; margin-bottom: 6px;">1. 单线路基础更新 API:</div>
-                            <code>curl -X POST "http://[本站域名或IP]/api/ddns/update" \
+                        <h3 class="margin-top" style="margin-top: 24px; font-size: 1.15rem; display: flex; align-items: center; justify-content: space-between;">
+                            <span>📚 客户端与全平台自动更新部署教程</span>
+                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted);">点击下方栏目展开折叠教程 👇</span>
+                        </h3>
+
+                        <!-- 手风琴教程组件容器 -->
+                        <div class="ddns-accordion-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
+
+                            <!-- 1. 基础 API 调用 -->
+                            <details style="border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.02); overflow: hidden;">
+                                <summary style="padding: 14px 18px; font-weight: 600; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between;">
+                                    <span>🌐 基础 HTTP / Curl 极简上报 API</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">单条 API 命令 ▾</span>
+                                </summary>
+                                <div style="padding: 16px; border-top: 1px solid var(--border-color);">
+                                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0;">支持使用任意语言或工具发起 HTTP POST 请求进行单个解析线路的 IP 强制刷新。</p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-size: 0.85rem; font-weight: 600;">Standard Shell Curl 指令：</span>
+                                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyCodeContent('code-api-base')">📋 复制代码</button>
+                                    </div>
+                                    <div class="code-block" style="margin: 0;">
+                                        <code id="code-api-base">curl -X POST "http://[本站域名或IP]/api/ddns/update" \
   -H "Authorization: Bearer [对应线路的Token]" \
   -d "ip=1.1.1.1"</code>
-                        </div>
+                                    </div>
+                                </div>
+                            </details>
 
-                        <div class="code-block">
-                            <div style="color: #10b981; font-weight: 600; margin-bottom: 6px;">2. 配合 CloudflareSpeedTest 三网测速自动上报脚本示范:</div>
-                            <code># 测速完成后，分别向电信/联通/移动 Token 提交测出的三网最佳 IP
-curl -X POST "http://[本站域名或IP]/api/ddns/update" -H "Authorization: Bearer [电信Token]" -d "ip=$CT_IP"
-curl -X POST "http://[本站域名或IP]/api/ddns/update" -H "Authorization: Bearer [联通Token]" -d "ip=$CU_IP"
-curl -X POST "http://[本站域名或IP]/api/ddns/update" -H "Authorization: Bearer [移动Token]" -d "ip=$CM_IP"</code>
+                            <!-- 2. Linux VPS (Ubuntu / Debian / CentOS) -->
+                            <details style="border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.02); overflow: hidden;" open>
+                                <summary style="padding: 14px 18px; font-weight: 600; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between;">
+                                    <span>🐧 Linux VPS 服务器 (Ubuntu / Debian / CentOS) - Cloudflare 三网优选自动同步整套 Shell 脚本</span>
+                                    <span style="font-size: 0.8rem; color: #10b981; font-weight: 600;">推荐 VPS 使用 ▾</span>
+                                </summary>
+                                <div style="padding: 16px; border-top: 1px solid var(--border-color);">
+                                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; line-height: 1.5;">
+                                        本脚本会自动依赖检查与安装（兼容 <code>apt-get</code> 与 <code>yum</code>），自动下载 <strong>CloudflareSpeedTest</strong> 工具进行测速，提取测出的<strong>电信 (CT)、联通 (CU)、移动 (CM)</strong> 前1名最佳 IP 并自动批量提交推送到 TriNet DNS。
+                                    </p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #10b981;">开箱即用三网自动测速更新 Shell 脚本 (cf_speedtest_trinet.sh)：</span>
+                                        <button class="btn btn-primary" style="padding: 2px 10px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-linux')">📋 一键复制完整 Shell 脚本</button>
+                                    </div>
+                                    <div class="code-block" style="margin: 0; max-height: 320px; overflow-y: auto;">
+                                        <code id="code-script-linux">#!/bin/bash
+# =========================================================
+# TriNet DNS - Cloudflare 三网优选 IP 自动测速与同步上报脚本
+# 适配系统: Ubuntu / Debian / CentOS / Alpine / RHEL
+# =========================================================
+
+# --- 【请在此配置您在 TriNet DNS 后台生成的 3 个 Token 与服务地址】 ---
+TRINET_SERVER="http://[您的TriNet服务器域名或IP]"
+TOKEN_CT="[填写电信线路Token]"   # 中国电信 (CT)
+TOKEN_CU="[填写联通线路Token]"   # 中国联通 (CU)
+TOKEN_CM="[填写移动线路Token]"   # 中国移动 (CM)
+# -------------------------------------------------------------
+
+# 1. 自动依赖校验
+if command -v apt-get &> /dev/null; then
+    command -v curl &> /dev/null || apt-get update && apt-get install -y curl tar wget
+elif command -v yum &> /dev/null; then
+    command -v curl &> /dev/null || yum install -y curl tar wget
+fi
+
+WORKDIR="/tmp/cf_speedtest_trinet"
+mkdir -p "$WORKDIR" && cd "$WORKDIR"
+
+# 2. 下载并解压 CloudflareSpeedTest 最新工具 (若本地未下载)
+if [ ! -f "./CloudflareST" ]; then
+    echo "[INFO] 正在获取 CloudflareSpeedTest 测速引擎..."
+    wget -N --no-check-certificate https://github.com/XIU2/CloudflareSpeedTest/releases/latest/download/CloudflareST_linux_amd64.tar.gz -O CloudflareST.tar.gz
+    tar -zxf CloudflareST.tar.gz
+    chmod +x CloudflareST
+fi
+
+# 3. 运行测速 (输出结果至 result.csv)
+echo "[INFO] 正在开始三网节点网络延迟与下载速度测试..."
+./CloudflareST -o result.csv -n 200 -dn 3
+
+if [ ! -f "result.csv" ]; then
+    echo "[ERROR] 测速失败，未生成 result.csv 文件"
+    exit 1
+fi
+
+# 4. 提取优选前 3 个响应最佳的 IP
+BEST_IP_1=$(sed -n '2p' result.csv | awk -F, '{print $1}')
+BEST_IP_2=$(sed -n '3p' result.csv | awk -F, '{print $1}')
+BEST_IP_3=$(sed -n '4p' result.csv | awk -F, '{print $1}')
+
+[ -z "$BEST_IP_1" ] && BEST_IP_1="104.16.1.1"
+[ -z "$BEST_IP_2" ] && BEST_IP_2="$BEST_IP_1"
+[ -z "$BEST_IP_3" ] && BEST_IP_3="$BEST_IP_1"
+
+echo "[INFO] 测速完成！选出三网最佳 IP: 电信->$BEST_IP_1, 联通->$BEST_IP_2, 移动->$BEST_IP_3"
+
+# 5. 调用 TriNet DNS 接口进行同步更新
+[ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$BEST_IP_1" && echo " [电信] 已更新"
+[ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$BEST_IP_2" && echo " [联通] 已更新"
+[ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$BEST_IP_3" && echo " [移动] 已更新"
+
+echo "[SUCCESS] 三网智能解析同步完毕！"</code>
+                                    </div>
+                                    <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
+                                        💡 <strong>定时任务设置提示 (Linux Crontab)</strong>：在终端运行 <code>crontab -e</code> 追加一行：<br>
+                                        <code>*/30 * * * * bash /path/to/cf_speedtest_trinet.sh &> /dev/null</code>（即每 30 分钟自动测试并刷新三网解析）。
+                                    </div>
+                                </div>
+                            </details>
+
+                            <!-- 3. OpenWrt 路由器 -->
+                            <details style="border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.02); overflow: hidden;">
+                                <summary style="padding: 14px 18px; font-weight: 600; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between;">
+                                    <span>📶 OpenWrt 软路由 - 动态公网 IP 自动上报脚本与计划任务</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">路由器专属 ▾</span>
+                                </summary>
+                                <div style="padding: 16px; border-top: 1px solid var(--border-color);">
+                                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; line-height: 1.5;">
+                                        适用于 OpenWrt 路由器环境，自动检测 WAN 口公网 IP 变动并向 TriNet DNS 进行同步（适配 <code>curl</code> / <code>wget-ssl</code>）。
+                                    </p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-size: 0.85rem; font-weight: 600;">OpenWrt 上报脚本 (trinet_openwrt_ddns.sh)：</span>
+                                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-openwrt')">📋 复制 OpenWrt 脚本</button>
+                                    </div>
+                                    <div class="code-block" style="margin: 0;">
+                                        <code id="code-script-openwrt">#!/bin/sh
+# OpenWrt DDNS 上报脚本
+TRINET_SERVER="http://[您的TriNet服务器域名或IP]"
+TOKEN="[填写您的DDNS_Token]"
+
+# 提取 WAN 口公网 IP
+WAN_IP=$(curl -s http://api.ipify.org || wget -qO- http://api.ipify.org)
+
+if [ -n "$WAN_IP" ]; then
+    curl -s -X POST "$TRINET_SERVER/api/ddns/update" \
+         -H "Authorization: Bearer $TOKEN" \
+         -d "ip=$WAN_IP"
+fi</code>
+                                    </div>
+                                    <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
+                                        💡 <strong>OpenWrt 定时任务部署</strong>：登录 OpenWrt Web 后台 -> 【系统】 -> 【计划任务】，加入：<br>
+                                        <code>*/5 * * * * sh /etc/trinet_openwrt_ddns.sh &> /dev/null</code>（每 5 分钟自动上报最新公网 IP）。
+                                    </div>
+                                </div>
+                            </details>
+
+                            <!-- 4. MikroTik RouterOS (ROS) -->
+                            <details style="border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.02); overflow: hidden;">
+                                <summary style="padding: 14px 18px; font-weight: 600; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between;">
+                                    <span>⚡ MikroTik RouterOS (ROS) 路由器 - 原生 Fetch 上报脚本</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">ROS 专属 ▾</span>
+                                </summary>
+                                <div style="padding: 16px; border-top: 1px solid var(--border-color);">
+                                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; line-height: 1.5;">
+                                        使用 RouterOS 原生脚本语言和 <code>/tool fetch</code> 命令向 TriNet DNS 进行更新。
+                                    </p>
+                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                        <span style="font-size: 0.85rem; font-weight: 600;">RouterOS (ROS) 脚本命令：</span>
+                                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-ros')">📋 复制 ROS 脚本</button>
+                                    </div>
+                                    <div class="code-block" style="margin: 0;">
+                                        <code id="code-script-ros"># ROS RouterOS Script
+:local trinetServer "http://[您的TriNet服务器域名或IP]/api/ddns/update"
+:local token "[填写您的DDNS_Token]"
+
+# 获取 WAN 口 IP
+:local wanInterface "pppoe-out1"
+:local currentIP [/ip address get [/ip address find interface=$wanInterface] address]
+:set currentIP [:pick $currentIP 0 [:find $currentIP "/"]]
+
+:if ([:len $currentIP] > 0) do={
+    /tool fetch url=$trinetServer http-method=post http-header-field="Authorization: Bearer $token" http-data=("ip=" . $currentIP) keep-result=no
+    :log info ("TriNet DDNS Updated: " . $currentIP)
+}</code>
+                                    </div>
+                                    <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
+                                        💡 <strong>ROS 定时器部署</strong>：在 WinBox Terminal 输入命令配置 5 分钟定时器：<br>
+                                        <code>/system scheduler add name=trinet-ddns interval=5m on-event="/system script run trinet-script"</code>
+                                    </div>
+                                </div>
+                            </details>
+
                         </div>
                     </div>
                 </section>

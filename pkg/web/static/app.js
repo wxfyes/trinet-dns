@@ -9,6 +9,43 @@ function escapeHTML(str) {
         .replace(/'/g, '&#39;');
 }
 
+// 通用文本一键复制工具函数
+function copyTextToClipboard(text) {
+    if (!text) return;
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            alert('已成功复制到剪贴板！');
+        }).catch(err => {
+            fallbackCopyText(text);
+        });
+    } else {
+        fallbackCopyText(text);
+    }
+}
+
+function fallbackCopyText(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        alert('已成功复制到剪贴板！');
+    } catch (err) {
+        alert('复制失败，请手动复制');
+    }
+    document.body.removeChild(textArea);
+}
+
+function copyCodeContent(elementId) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    copyTextToClipboard(el.innerText);
+}
+
 // API 请求统一封装，自动注入 Authorization Token 并处理 401 未授权
 async function fetchAPI(url, options = {}) {
     const token = localStorage.getItem('trinet_token');
@@ -522,9 +559,14 @@ function loadDDNSTable() {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-            <td class="font-mono">${fqdn}</td>
+            <td class="font-mono">${escapeHTML(fqdn)}</td>
             <td><span class="isp-dot ${isp}"></span>${ispNameMap[isp] || isp}</td>
-            <td class="font-mono">${token.substring(0, 12)}...</td>
+            <td class="font-mono">
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <span style="font-size: 0.85rem; background: rgba(0,0,0,0.05); padding: 2px 8px; border-radius: 4px; font-weight: 600; font-family: monospace;">${escapeHTML(token)}</span>
+                    <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem; white-space: nowrap;" onclick="copyTextToClipboard('${token}')">📋 复制 Token</button>
+                </div>
+            </td>
             <td>-</td>
             <td>
                 <button class="btn btn-text danger" onclick="deleteToken('${token}')">删除</button>
