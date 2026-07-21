@@ -2,8 +2,11 @@ package store
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -96,9 +99,24 @@ func (s *MemoryStore) SyncCloudflareBestIPs() {
 		}
 
 		var data CFBestIPResponse
-		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
-			log.Printf("[CF-BEST WARNING] 解析 API [%s] 的 JSON 失败: %s", apiURL, err.Error())
-			continue
+		contentType := resp.Header.Get("Content-Type")
+		if strings.Contains(apiURL, ".html") || strings.Contains(contentType, "text/html") {
+			bodyBytes, err := io.ReadAll(resp.Body)
+			if err != nil {
+				log.Printf("[CF-BEST WARNING] 读取 API [%s] 的 HTML 失败: %s", apiURL, err.Error())
+				continue
+			}
+			parsedData, err := parseHTMLBestIPs(string(bodyBytes))
+			if err != nil {
+				log.Printf("[CF-BEST WARNING] 解析 API [%s] 的 HTML 失败: %s", apiURL, err.Error())
+				continue
+			}
+			data = parsedData
+		} else {
+			if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+				log.Printf("[CF-BEST WARNING] 解析 API [%s] 的 JSON 失败: %s", apiURL, err.Error())
+				continue
+			}
 		}
 
 		if !data.Status || len(data.Info.CT) == 0 || len(data.Info.CU) == 0 || len(data.Info.CM) == 0 {
@@ -216,4 +234,129 @@ func (s *MemoryStore) SyncCloudflareBestIPs() {
 	}
 
 	log.Printf("[CF-BEST] 优选 IP 已成功更新至解析记录 [%s]", targetDomain)
+}
+
+// parseHTMLBestIPs 从网页 HTML 中提取最优的 Cloudflare 优选 IP
+func parseHTMLBestIPs(htmlStr string) (CFBestIPResponse, error) {
+	var resp CFBestIPResponse
+	resp.Status = true
+	resp.Code = 200
+	resp.Msg = "success"
+
+	// 正则提取 <tr>...</tr> 块
+	trReg := regexp.MustCompile(`(?s)<tr>(.*?)</tr>`)
+	// 正则提取 <td>...</td> 块
+	tdReg := regexp.MustCompile(`(?s)<td>(.*?)</td>|<td[^>]*>(.*?)</td>`)
+
+	matches := trReg.FindAllStringSubmatch(htmlStr, -1)
+
+	type ipRecord struct {
+		isp     string
+		ip      string
+		loss    float64
+		latency float64
+		speed   float64
+	}
+	var allRecords []ipRecord
+
+	for _, match := range matches {
+		trContent := match[1]
+		if !strings.Contains(trContent, `scope="row"`) {
+			continue
+		}
+
+		tdMatches := tdReg.FindAllStringSubmatch(trContent, -1)
+		var tds []string
+		for _, tdMatch := range tdMatches {
+			val := tdMatch[1]
+			if val == "" {
+				val = tdMatch[2]
+			}
+			val = strings.TrimSpace(val)
+			tagReg := regexp.MustCompile(`<[^>]*>`)
+			val = tagReg.ReplaceAllString(val, "")
+			val = strings.TrimSpace(val)
+			tds = append(tds, val)
+		}
+
+		if len(tds) < 5 {
+			continue
+		}
+
+		isp := tds[0]
+		ip := tds[1]
+		lossStr := strings.TrimSuffix(tds[2], "%")
+		latencyStr := strings.TrimSuffix(tds[3], "ms")
+		speedStr := strings.TrimSuffix(tds[4], "mb/s")
+
+		loss, _ := strconv.ParseFloat(lossStr, 64)
+		latency, _ := strconv.ParseFloat(latencyStr, 64)
+		speed, _ := strconv.ParseFloat(speedStr, 64)
+
+		allRecords = append(allRecords, ipRecord{
+			isp:     isp,
+			ip:      ip,
+			loss:    loss,
+			latency: latency,
+			speed:   speed,
+		})
+	}
+
+	findBest := func(ispName string) string {
+		var best ipRecord
+		for _, rec := range allRecords {
+			if rec.isp != ispName {
+				continue
+			}
+			if best.ip == "" {
+				best = rec
+				continue
+			}
+			if rec.loss < best.loss {
+				best = rec
+			} else if rec.loss == best.loss {
+				if rec.speed > best.speed {
+					best = rec
+				} else if rec.speed == best.speed {
+					if rec.latency < best.latency {
+						best = rec
+					}
+				}
+			}
+		}
+		return best.ip
+	}
+
+	bestCT := findBest("电信")
+	bestCU := findBest("联通")
+	bestCM := findBest("移动")
+	bestCN := findBest("多线")
+
+	if bestCM == "" && bestCT == "" && bestCU == "" {
+		return resp, fmt.Errorf("未在 HTML 中找到有效的运营商 IP 数据")
+	}
+
+	// 填充结构体
+	if bestCM != "" {
+		resp.Info.CM = append(resp.Info.CM, struct {
+			IP string `json:"ip"`
+		}{IP: bestCM})
+	}
+	if bestCT != "" {
+		resp.Info.CT = append(resp.Info.CT, struct {
+			IP string `json:"ip"`
+		}{IP: bestCT})
+	}
+	if bestCU != "" {
+		resp.Info.CU = append(resp.Info.CU, struct {
+			IP string `json:"ip"`
+		}{IP: bestCU})
+	}
+	if bestCN != "" {
+		resp.Info.CN = append(resp.Info.CN, struct {
+			IP string `json:"ip"`
+		}{IP: bestCN})
+	}
+
+	return resp, nil
 }
