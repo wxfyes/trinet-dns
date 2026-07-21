@@ -97,7 +97,24 @@ function handlePasswordSubmit(event) {
 }
 
 // 标签页切换逻辑
+function toggleSidebar(open) {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar && overlay) {
+        if (open) {
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+        } else {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        }
+    }
+}
+
 function switchTab(tabId) {
+    // 自动折叠侧边栏
+    toggleSidebar(false);
+
     // 1. 切换菜单激活状态
     const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach(item => {
@@ -123,9 +140,14 @@ function switchTab(tabId) {
         'dashboard': '控制台',
         'records': '解析记录',
         'ddns': '动态 DNS 配置',
+        'orders': '订单记录',
         'logs': '系统运行日志'
     };
     document.getElementById('page-title').innerText = titleMap[tabId] || '控制台';
+
+    if (tabId === 'orders') {
+        loadOrdersTable();
+    }
 }
 
 // 模态弹窗管理
@@ -178,4 +200,22 @@ function clearLogs() {
     if (container) {
         container.innerHTML = '<div class="log-row info">[' + new Date().toLocaleString() + '] [SYSTEM] 日志缓存已清空。</div>';
     }
+}
+
+function handlePasswordSubmit(event) {
+    event.preventDefault();
+    const oldPass = document.getElementById('password-old').value;
+    const newPass = document.getElementById('password-new').value;
+    const confirmPass = document.getElementById('password-confirm').value;
+
+    if (newPass !== confirmPass) {
+        alert('两次输入的新密码不一致！');
+        return;
+    }
+    alert('密码修改成功 (当前为静态原型演示)');
+    closePasswordModal();
+}
+
+function loadOrdersTable() {
+    console.log('订单数据加载完毕 (静态演示模式)');
 }

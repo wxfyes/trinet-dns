@@ -772,3 +772,141 @@ input:checked + .switch-slider {
 input:checked + .switch-slider:before {
     transform: translateX(24px);
 }
+
+/* 遮罩层默认样式（非激活状态隐藏） */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.sidebar-overlay.active {
+    display: block;
+    opacity: 1;
+}
+
+/* 顶部栏汉堡菜单按钮默认隐藏 */
+.menu-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    color: var(--text-main);
+    border-radius: var(--radius-sm);
+    transition: var(--transition-fast);
+}
+.menu-toggle:hover {
+    background-color: var(--primary-light);
+}
+
+/* 移动端响应式布局适配 */
+@media (max-width: 768px) {
+    body {
+        position: relative;
+    }
+
+    .app-container {
+        flex-direction: column;
+        height: auto;
+        min-height: 100vh;
+        overflow-x: hidden;
+    }
+
+    /* 侧边栏转换为抽屉式 */
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 240px;
+        height: 100vh;
+        z-index: 1000;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 10px 0 25px -5px rgba(0, 0, 0, 0.1), 5px 0 10px -5px rgba(0, 0, 0, 0.04);
+        border-right: 1px solid var(--border-color);
+    }
+    
+    .sidebar.open {
+        transform: translateX(0);
+    }
+
+    /* 主内容区域自适应 */
+    .main-content {
+        height: auto;
+        min-height: 100vh;
+        overflow-y: visible;
+        width: 100%;
+    }
+
+    .top-bar {
+        padding: 0 16px;
+        height: 56px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+
+    .menu-toggle {
+        display: flex;
+    }
+
+    .content-viewport {
+        padding: 16px;
+    }
+
+    .card-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    .table-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+
+    .search-wrapper {
+        width: 100%;
+    }
+
+    /* 保证大表在小屏下可滑动不撑破页面 */
+    .table-container {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* 教程手风琴自适应 */
+    .ddns-header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+    }
+    .ddns-header button {
+        width: 100%;
+    }
+    
+    /* 解决其他弹性布局在大屏到小屏的重叠 */
+    .user-plan-badge-container {
+        text-align: left !important;
+        width: 100%;
+    }
+}

@@ -332,8 +332,25 @@ async function handlePasswordSubmit(event) {
     }
 }
 
+function toggleSidebar(open) {
+    const sidebar = document.querySelector('.sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar && overlay) {
+        if (open) {
+            sidebar.classList.add('open');
+            overlay.classList.add('active');
+        } else {
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        }
+    }
+}
+
 // 标签页切换逻辑
 function switchTab(tabId) {
+    // 在移动端点击菜单跳转时自动折叠侧边栏
+    toggleSidebar(false);
+
     if (history.replaceState) {
         history.replaceState(null, null, `#${tabId}`);
     }
@@ -365,6 +382,7 @@ function switchTab(tabId) {
         'ddns': '动态 DNS 配置',
         'profile': '个人中心',
         'billing': '套餐购买',
+        'orders': '订单记录',
         'logs': '系统运行日志',
         'users': '用户管理控制台',
         'settings': '系统管理设置'
@@ -384,6 +402,8 @@ function switchTab(tabId) {
         loadSettingsPage();
     } else if (tabId === 'billing') {
         loadBillingPage();
+    } else if (tabId === 'orders') {
+        loadOrdersTable();
     }
 }
 
@@ -1555,9 +1575,15 @@ async function handleProfilePasswordSubmit(e) {
     e.preventDefault();
     const oldPass = document.getElementById('profile-old-pass').value;
     const newPass = document.getElementById('profile-new-pass').value;
+    const newPassConfirm = document.getElementById('profile-new-pass-confirm').value;
 
-    if (!oldPass || !newPass) {
-        alert('请输入当前密码和新密码');
+    if (!oldPass || !newPass || !newPassConfirm) {
+        alert('请输入所有必填项');
+        return;
+    }
+
+    if (newPass !== newPassConfirm) {
+        alert('两次输入的新密码不一致！');
         return;
     }
 
@@ -1576,6 +1602,62 @@ async function handleProfilePasswordSubmit(e) {
         }
     } catch (err) {
         alert('修改密码失败: ' + err.message);
+    }
+}
+
+// 载入订单记录表格
+async function loadOrdersTable() {
+    const tbody = document.getElementById('orders-table-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-light)">订单数据加载中...</td></tr>';
+
+    try {
+        const res = await fetchAPI('/api/user/orders?t=' + Date.now());
+        if (!res.ok) throw new Error('无法连接到订单 API');
+        const orders = await res.json();
+
+        tbody.innerHTML = '';
+        if (!orders || orders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: var(--text-light)">暂无订单记录</td></tr>';
+            return;
+        }
+
+        const cycleMap = {
+            'month': '包月',
+            'year': '包年',
+            'forever': '永久'
+        };
+
+        const statusMap = {
+            'pending': '<span class="badge" style="background: #fef3c7; color: #d97706;">待支付</span>',
+            'paid': '<span class="badge" style="background: #d1fae5; color: #059669;">已支付</span>',
+            'failed': '<span class="badge" style="background: #fee2e2; color: #dc2626;">已失效</span>'
+        };
+
+        orders.forEach(order => {
+            const tr = document.createElement('tr');
+            
+            // 格式化创建时间
+            const timeStr = order.created_at ? new Date(order.created_at * 1000).toLocaleString('zh-CN', { hour12: false }) : '-';
+            
+            tr.innerHTML = `
+                <td class="font-mono" style="font-weight: 500;">${escapeHTML(order.order_id)}</td>
+                <td>${escapeHTML(order.username || '用户' + order.user_id)}</td>
+                <td><span class="badge badge-type">${escapeHTML(order.plan === 'free' ? '免费版' : order.plan)}</span></td>
+                <td>${cycleMap[order.cycle] || order.cycle || '-'}</td>
+                <td class="font-mono">${order.price.toFixed(2)} 元</td>
+                <td>${escapeHTML(order.payment_method === 'usdt' ? 'USDT-TRC20' : order.payment_method)}</td>
+                <td>${statusMap[order.status] || order.status}</td>
+                <td class="font-mono" style="font-size: 0.8rem; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHTML(order.tx_id || '')}">
+                    ${order.tx_id ? escapeHTML(order.tx_id) : '-'}
+                </td>
+                <td class="font-mono">${timeStr}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; color: var(--danger)">加载订单失败: ${escapeHTML(err.message)}</td></tr>`;
     }
 }
 

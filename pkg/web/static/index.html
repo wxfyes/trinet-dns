@@ -67,6 +67,8 @@
     </div>
 
     <div class="app-container" id="app-container" style="display: none;">
+        <!-- 移动端侧边栏遮罩层 -->
+        <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar(false)"></div>
         <!-- 侧边导航栏 -->
         <aside class="sidebar">
             <div class="brand">
@@ -93,6 +95,10 @@
                 <a href="#billing" class="menu-item" onclick="switchTab('billing')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line><path d="M16 14h2M12 14h.01"></path></svg>
                     套餐购买
+                </a>
+                <a href="#orders" class="menu-item" onclick="switchTab('orders')">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    订单记录
                 </a>
                 <a href="#logs" class="menu-item" onclick="switchTab('logs')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -123,7 +129,12 @@
         <main class="main-content">
             <!-- 顶部栏 -->
             <header class="top-bar">
-                <h1 id="page-title">控制台</h1>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar(true)">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin: 0;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <h1 id="page-title">控制台</h1>
+                </div>
                 <div class="user-profile">
                     <span class="server-ip" id="visitor-ip-display">本机 IP: 加载中...</span>
                 </div>
@@ -574,6 +585,7 @@ fi</code>
                                 <form id="profile-password-form" onsubmit="handleProfilePasswordSubmit(event)" style="display: flex; flex-direction: column; gap: 12px; max-width: 400px;">
                                     <input type="password" id="profile-old-pass" class="form-control" placeholder="🔑 当前密码" required autocomplete="current-password">
                                     <input type="password" id="profile-new-pass" class="form-control" placeholder="🔒 新密码" required autocomplete="new-password">
+                                    <input type="password" id="profile-new-pass-confirm" class="form-control" placeholder="🔒 确认新密码" required autocomplete="new-password">
                                     <button type="submit" class="btn btn-primary" style="width: 120px; margin-top: 4px;">更新密码</button>
                                 </form>
                             </div>
@@ -616,6 +628,39 @@ fi</code>
                                 <input type="text" id="usdt-verify-txid" placeholder="请输入64位交易哈希 (TxID / Transaction Hash)" required class="form-control font-mono" style="flex: 1; min-width: 250px;">
                                 <button type="submit" class="btn btn-primary" style="white-space: nowrap;">确认激活</button>
                             </form>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 订单记录面板 -->
+                <section id="tab-orders" class="tab-pane">
+                    <div class="section-container">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                            <div>
+                                <h2 style="margin: 0; font-size: 1.5rem;">订单与支付记录</h2>
+                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">查看您在本系统的所有充值与套餐购买订单及其实时支付状态。</p>
+                            </div>
+                            <button class="btn btn-secondary" onclick="loadOrdersTable()">刷新订单</button>
+                        </div>
+                        <div class="table-container card">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>订单号</th>
+                                        <th>用户名</th>
+                                        <th>套餐</th>
+                                        <th>周期</th>
+                                        <th>价格</th>
+                                        <th>支付方式</th>
+                                        <th>状态</th>
+                                        <th>交易 ID / TxID</th>
+                                        <th>创建时间</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="orders-table-body">
+                                    <!-- 由 app.js 动态渲染 -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </section>

@@ -1182,6 +1182,71 @@ func (s *MemoryStore) GetOrder(orderID string) (map[string]interface{}, error) {
 	}, nil
 }
 
+// GetUserOrders 获取指定用户的订单记录 (支持按角色权限隔离，admin 可以获取全部)
+func (s *MemoryStore) GetUserOrders(userID int64, role string) ([]map[string]interface{}, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if s.db == nil {
+		return nil, fmt.Errorf("数据库未初始化")
+	}
+
+	var rows *sql.Rows
+	var err error
+	if role == "admin" {
+		query := `
+		SELECT o.order_id, o.user_id, u.username, o.plan, o.cycle, o.price, o.payment_method, o.status, o.tx_id, o.created_at, o.duration_days
+		FROM orders o
+		JOIN users u ON o.user_id = u.id
+		ORDER BY o.created_at DESC
+		`
+		rows, err = s.db.Query(query)
+	} else {
+		query := `
+		SELECT o.order_id, o.user_id, u.username, o.plan, o.cycle, o.price, o.payment_method, o.status, o.tx_id, o.created_at, o.duration_days
+		FROM orders o
+		JOIN users u ON o.user_id = u.id
+		WHERE o.user_id = ?
+		ORDER BY o.created_at DESC
+		`
+		rows, err = s.db.Query(query, userID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var result []map[string]interface{}
+	for rows.Next() {
+		var orderID, username, plan, cycle, payMethod, status, txID string
+		var uid int64
+		var price float64
+		var createdAt int64
+		var durationDays int
+
+		err := rows.Scan(&orderID, &uid, &username, &plan, &cycle, &price, &payMethod, &status, &txID, &createdAt, &durationDays)
+		if err != nil {
+			continue
+		}
+
+		result = append(result, map[string]interface{}{
+			"order_id":       orderID,
+			"user_id":        uid,
+			"username":       username,
+			"plan":           plan,
+			"cycle":          cycle,
+			"price":          price,
+			"payment_method": payMethod,
+			"status":         status,
+			"tx_id":          txID,
+			"created_at":     createdAt,
+			"duration_days":  durationDays,
+		})
+	}
+
+	return result, nil
+}
+
 // MarkOrderPaid 将订单标记为已支付，并为用户开通/续期套餐
 func (s *MemoryStore) MarkOrderPaid(orderID string, txID string) error {
 	s.mu.Lock()

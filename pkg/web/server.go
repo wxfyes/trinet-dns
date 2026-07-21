@@ -528,6 +528,7 @@ func (ws *WebServer) Start() {
 	http.HandleFunc("/api/user/billing", ws.handleUserBilling)
 	http.HandleFunc("/api/user/billing/order", ws.handleCreateOrder)
 	http.HandleFunc("/api/user/billing/order/verify-usdt", ws.handleVerifyUSDT)
+	http.HandleFunc("/api/user/orders", ws.handleGetUserOrders)
 	http.HandleFunc("/api/payment/notify/epay", ws.handleEpayNotify)
 	http.HandleFunc("/api/payment/notify/mgate", ws.handleMGateNotify)
 
@@ -788,6 +789,30 @@ func (ws *WebServer) handleLogStream(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+}
+
+// handleGetUserOrders 获取用户的历史订单记录
+func (ws *WebServer) handleGetUserOrders(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
+		return
+	}
+
+	user, ok := ws.checkAuth(w, r)
+	if !ok {
+		return
+	}
+
+	orders, err := ws.store.GetUserOrders(user.ID, user.Role)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf(`{"error":"获取订单列表失败: %s"}`, err.Error())))
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(orders)
 }
 
 // handleUserBilling 获取用户账单和套餐详情
