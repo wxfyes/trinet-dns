@@ -596,11 +596,24 @@ func (s *MemoryStore) Lookup(domain, subdomain, qType, isp string) ([]string, ui
 		return nil, 0
 	}
 
+	// 1. 尝试精确匹配 (如 ct_gd)
 	for _, r := range records {
 		if r.ISP == isp && len(r.Values) > 0 {
 			return r.Values, r.TTL
 		}
 	}
+
+	// 2. 如果包含省份后缀，尝试降级匹配基础运营商 (如 ct)
+	if idx := strings.IndexByte(isp, '_'); idx > 0 {
+		baseISP := isp[:idx]
+		for _, r := range records {
+			if r.ISP == baseISP && len(r.Values) > 0 {
+				return r.Values, r.TTL
+			}
+		}
+	}
+
+	// 3. 最后尝试兜底匹配默认记录 (def)
 	for _, r := range records {
 		if r.ISP == "def" && len(r.Values) > 0 {
 			return r.Values, r.TTL

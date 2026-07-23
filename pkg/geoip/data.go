@@ -70,8 +70,8 @@ func (t *ISPRoutingMap) LoadFromTextFile(filePath string) error {
 		cidr := parts[0]
 		isp := strings.ToLower(parts[1])
 
-		// 仅允许标准三网标识
-		if isp != "ct" && isp != "cu" && isp != "cm" && isp != "def" {
+		// 放宽强制校验，允许包含分省格式 (如 ct_gd)
+		if len(isp) == 0 || len(isp) > 20 {
 			continue
 		}
 
