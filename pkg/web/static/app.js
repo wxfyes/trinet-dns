@@ -927,6 +927,19 @@ async function loadSettingsPage() {
             cfSecretKeyEl.value = data.cf_turnstile_secret_key || '';
         }
 
+        // 2.5 Telegram 备份配置
+        const tgEnabledEl = document.getElementById('setting-tg-enabled');
+        if (tgEnabledEl) tgEnabledEl.checked = !!data.tg_backup_enabled;
+
+        const tgTokenEl = document.getElementById('setting-tg-bot-token');
+        if (tgTokenEl) tgTokenEl.value = data.tg_bot_token || '';
+
+        const tgChatIdEl = document.getElementById('setting-tg-chat-id');
+        if (tgChatIdEl) tgChatIdEl.value = data.tg_chat_id || '';
+
+        const tgTimeEl = document.getElementById('setting-tg-backup-time');
+        if (tgTimeEl) tgTimeEl.value = data.tg_backup_time || '02:00';
+
         // 3. 设置节点同步信息
         const syncTokenEl = document.getElementById('setting-sync-token');
         if (syncTokenEl) {
