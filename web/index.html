@@ -386,9 +386,39 @@
                             <label for="select-isp">解析线路</label>
                             <select id="select-isp" class="form-control">
                                 <option value="def">默认 (Default)</option>
-                                <option value="ct">中国电信 (CT)</option>
-                                <option value="cu">中国联通 (CU)</option>
-                                <option value="cm">中国移动 (CM)</option>
+                                
+                                <optgroup label="中国电信 (CT)">
+                                    <option value="ct">全网电信 (默认)</option>
+                                    <option value="ct_bj">北京电信</option>
+                                    <option value="ct_gd">广东电信</option>
+                                    <option value="ct_sh">上海电信</option>
+                                    <option value="ct_tj">天津电信</option>
+                                    <option value="ct_cq">重庆电信</option>
+                                    <option value="ct_js">江苏电信</option>
+                                    <option value="ct_zj">浙江电信</option>
+                                    <option value="ct_sd">山东电信</option>
+                                    <option value="ct_sc">四川电信</option>
+                                </optgroup>
+                                
+                                <optgroup label="中国联通 (CU)">
+                                    <option value="cu">全网联通 (默认)</option>
+                                    <option value="cu_bj">北京联通</option>
+                                    <option value="cu_gd">广东联通</option>
+                                    <option value="cu_sh">上海联通</option>
+                                    <option value="cu_js">江苏联通</option>
+                                    <option value="cu_zj">浙江联通</option>
+                                    <option value="cu_sd">山东联通</option>
+                                </optgroup>
+                                
+                                <optgroup label="中国移动 (CM)">
+                                    <option value="cm">全网移动 (默认)</option>
+                                    <option value="cm_bj">北京移动</option>
+                                    <option value="cm_gd">广东移动</option>
+                                    <option value="cm_sh">上海移动</option>
+                                    <option value="cm_js">江苏移动</option>
+                                    <option value="cm_zj">浙江移动</option>
+                                    <option value="cm_sd">山东移动</option>
+                                </optgroup>
                             </select>
                         </div>
                     </div>
