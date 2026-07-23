@@ -1817,7 +1817,7 @@ func (ws *WebServer) handleTestTGBackup(w http.ResponseWriter, r *http.Request) 
 	err := ws.store.ExecuteTGBackup(token, chatId)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
+		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
 		return
 	}
 
