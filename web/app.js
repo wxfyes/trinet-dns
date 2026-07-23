@@ -251,3 +251,20 @@ async function saveTGBackupSettings(event) {
         alert('网络错误: ' + err.message);
     }
 }
+
+
+async function testTGBackup() {
+    try {
+        const res = await fetchAPI('/api/admin/tg_backup/test', {
+            method: 'POST'
+        });
+        if (res.ok) {
+            alert('🎉 数据库备份推送成功！请查看您的 Telegram。');
+        } else {
+            const data = await res.json();
+            alert('推送失败: ' + (data.error || '未知错误'));
+        }
+    } catch (err) {
+        alert('网络错误: ' + err.message);
+    }
+}

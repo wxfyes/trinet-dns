@@ -517,6 +517,7 @@ func (ws *WebServer) Start() {
 	http.HandleFunc("/api/logout", ws.handleLogout)
 	http.HandleFunc("/api/admin/password", ws.handlePassword)
 	http.HandleFunc("/api/admin/settings", ws.handleAdminSettings)
+	http.HandleFunc("/api/admin/tg_backup/test", ws.handleTestTGBackup)
 	http.HandleFunc("/api/records", ws.handleRecords)
 	http.HandleFunc("/api/ddns/token", ws.handleDDNSToken)
 	http.HandleFunc("/api/ddns/update", ws.handleDDNSUpdate)
@@ -1781,4 +1782,36 @@ func (ws *WebServer) handleUserRenew(w http.ResponseWriter, r *http.Request) {
 		"price":   price,
 		"message": "续费成功！已使用账户钱包余额划扣 30 天月费",
 	})
+}
+
+
+func (ws *WebServer) handleTestTGBackup(w http.ResponseWriter, r *http.Request) {
+	_, ok := ws.checkAuth(w, r)
+	if !ok {
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	token := ws.store.GetSetting("tg_bot_token", "")
+	chatId := ws.store.GetSetting("tg_chat_id", "")
+
+	if token == "" || chatId == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(`{"error":"请先保存 Telegram Bot Token 和 Chat ID"}`))
+		return
+	}
+
+	err := ws.store.ExecuteTGBackup(token, chatId)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf(`{"error":"%s"}`, err.Error())))
+		return
+	}
+
+	w.Write([]byte(`{"status":"success","message":"推送成功"}`))
 }
