@@ -867,6 +867,14 @@ label {
         width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
+        margin-bottom: 16px;
+        box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.1); /* 增加右侧阴影提示可滑动 */
+    }
+
+    .table-container .data-table th,
+    .table-container .data-table td {
+        white-space: nowrap; /* 强制表格内容不换行，依赖横向滚动 */
+        padding: 12px 16px;
     }
 
     /* 教程手风琴自适应 */
