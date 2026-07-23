@@ -220,3 +220,34 @@ function handlePasswordSubmit(event) {
 function loadOrdersTable() {
     console.log('订单数据加载完毕 (静态演示模式)');
 }
+
+
+async function saveTGBackupSettings(event) {
+    event.preventDefault();
+    const token = document.getElementById('setting-tg-bot-token').value.trim();
+    const chatId = document.getElementById('setting-tg-chat-id').value.trim();
+    let time = document.getElementById('setting-tg-backup-time').value.trim();
+    if (!time) time = "02:00";
+
+    try {
+        const res = await fetchAPI('/api/admin/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                tg_bot_token: token,
+                tg_chat_id: chatId,
+                tg_backup_time: time
+            })
+        });
+
+        if (res.ok) {
+            alert('Telegram 备份配置保存成功！');
+            loadSettingsPage();
+        } else {
+            const data = await res.json();
+            alert('保存失败: ' + (data.error || '未知错误'));
+        }
+    } catch (err) {
+        alert('网络错误: ' + err.message);
+    }
+}

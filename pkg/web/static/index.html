@@ -765,6 +765,43 @@ fi</code>
                             </form>
                         </div>
 
+                        
+                        <!-- 数据库自动备份 (Telegram) -->
+                        <div class="card" style="padding: 24px; margin-bottom: 24px;">
+                            <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+                                💾 数据库云端灾备 (Telegram)
+                            </h3>
+                            <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
+                                <div>
+                                    <h4 style="margin: 0; font-size: 0.95rem;">启用 Telegram 每日定时备份</h4>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">每天定时将最新的 data.db 数据库备份发送到指定的 Telegram 机器人/群组</p>
+                                </div>
+                                <label class="switch-container">
+                                    <input type="checkbox" id="setting-tg-enabled" onchange="updateBasicSetting('tg_backup_enabled', this.checked)">
+                                    <span class="switch-slider"></span>
+                                </label>
+                            </div>
+                            <form id="setting-tg-form" onsubmit="saveTGBackupSettings(event)">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="setting-tg-bot-token">Telegram Bot Token</label>
+                                        <input type="text" id="setting-tg-bot-token" placeholder="例如: 123456789:ABCDefGHIJKlmNop" class="form-control font-mono">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="setting-tg-chat-id">Chat ID (接收群组/用户 ID)</label>
+                                        <input type="text" id="setting-tg-chat-id" placeholder="例如: 123456789 或 -1001234567" class="form-control font-mono">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="setting-tg-backup-time">每日备份时间 (HH:MM)</label>
+                                        <input type="time" id="setting-tg-backup-time" class="form-control font-mono">
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 12px; margin-top: 8px;">
+                                    <button type="submit" class="btn btn-primary">保存 Telegram 备份配置</button>
+                                </div>
+                            </form>
+                        </div>
+
                         <!-- Cloudflare 三网优选 IP 自动同步 -->
                         <div class="card" style="padding: 24px; margin-bottom: 24px;">
                             <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
