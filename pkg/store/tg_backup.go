@@ -63,10 +63,14 @@ func (s *MemoryStore) ExecuteTGBackup(token, chatId string) error {
 		log.Printf("[TG-BACKUP] [ERROR] 数据落盘失败: %v", err)
 	}
 
-	// dbPath 从环境变量获取或使用默认
-	dbPath := os.Getenv("TRINET_DB_PATH")
-	if dbPath == "" {
-		dbPath = "data.db"
+	if s.filePath == "" {
+		log.Printf("[TG-BACKUP] [ERROR] 数据库路径未配置")
+		return fmt.Errorf("数据库路径未配置")
+	}
+
+	dbPath := s.filePath
+	if strings.HasSuffix(strings.ToLower(s.filePath), ".json") {
+		dbPath = strings.TrimSuffix(s.filePath, ".json") + ".db"
 	}
 
 	// 检查数据库文件是否存在
