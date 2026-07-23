@@ -421,7 +421,7 @@ function showAddModal() {
     document.getElementById('input-subdomain').disabled = false;
     document.getElementById('input-domain').disabled = false;
     document.getElementById('select-type').disabled = false;
-    document.getElementById('select-isp').disabled = false;
+    document.getElementById('cascader-wrapper-select-isp').removeAttribute('disabled');
     modalOverlay.classList.add('show');
 }
 
@@ -435,7 +435,8 @@ function editRecord(subdomain, domain, type, isp, value, ttl) {
     document.getElementById('select-type').value = type;
     document.getElementById('select-type').disabled = true;
     document.getElementById('select-isp').value = isp;
-    document.getElementById('select-isp').disabled = true;
+    if (typeof setCascaderValue === 'function') setCascaderValue('select-isp', isp);
+    document.getElementById('cascader-wrapper-select-isp').setAttribute('disabled', 'true');
     document.getElementById('input-value').value = value;
     document.getElementById('input-ttl').value = ttl || 60;
     modalOverlay.classList.add('show');

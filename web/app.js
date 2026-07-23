@@ -175,6 +175,7 @@ function editRecord(subdomain, domain, isp, value) {
     document.getElementById('input-domain').value = domain;
     document.getElementById('input-domain').disabled = true; // 锁定主域名
     document.getElementById('select-isp').value = isp;
+    if (typeof setCascaderValue === 'function') setCascaderValue('select-isp', isp);
     document.getElementById('input-value').value = value;
     modalOverlay.classList.add('show');
 }
