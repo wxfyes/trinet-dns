@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TriNet DNS - 三网智能解析控制台</title>
+    <title>TriNet DNS - 涓夌綉鏅鸿兘瑙ｆ瀽鎺у埗鍙?/title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
@@ -22,168 +22,166 @@
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" defer></script>
 </head>
 <body>
-    <!-- 登录遮罩层 -->
+    <!-- 鐧诲綍閬僵灞?-->
     <div id="login-overlay" class="login-overlay">
         <div class="login-box">
-            <span class="login-logo">🦅</span>
+            <span class="login-logo">馃</span>
             <h2 id="login-box-title">TriNet DNS</h2>
-            <p id="login-box-desc">三网智能解析控制台</p>
-            <!-- 登录表单 -->
+            <p id="login-box-desc">涓夌綉鏅鸿兘瑙ｆ瀽鎺у埗鍙?/p>
+            <!-- 鐧诲綍琛ㄥ崟 -->
             <form id="login-form" onsubmit="handleLoginSubmit(event)">
                 <div class="form-group">
-                    <label for="login-username">用户名</label>
+                    <label for="login-username">鐢ㄦ埛鍚?/label>
                     <input type="text" id="login-username" required class="form-control" autocomplete="username">
                 </div>
                 <div class="form-group">
-                    <label for="login-password">密码</label>
+                    <label for="login-password">瀵嗙爜</label>
                     <input type="password" id="login-password" required class="form-control" autocomplete="current-password">
                 </div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">登 录</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">鐧?褰?/button>
                 <div style="text-align: center; margin-top: 12px; display: none;" id="reg-link-container">
-                    <a href="javascript:void(0)" onclick="toggleLoginReg(true)" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">还没有账号？立即注册</a>
+                    <a href="javascript:void(0)" onclick="toggleLoginReg(true)" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">杩樻病鏈夎处鍙凤紵绔嬪嵆娉ㄥ唽</a>
                 </div>
             </form>
-            <!-- 注册表单 -->
+            <!-- 娉ㄥ唽琛ㄥ崟 -->
             <form id="register-form" onsubmit="handleRegisterSubmit(event)" style="display: none;">
                 <div class="form-group">
-                    <label for="register-username">用户名</label>
+                    <label for="register-username">鐢ㄦ埛鍚?/label>
                     <input type="text" id="register-username" required class="form-control" autocomplete="username">
                 </div>
                 <div class="form-group">
-                    <label for="register-password">密码</label>
+                    <label for="register-password">瀵嗙爜</label>
                     <input type="password" id="register-password" required class="form-control" autocomplete="new-password">
                 </div>
                 <div class="form-group">
-                    <label for="register-confirm">确认密码</label>
+                    <label for="register-confirm">纭瀵嗙爜</label>
                     <input type="password" id="register-confirm" required class="form-control" autocomplete="new-password">
                 </div>
                 <div id="cf-turnstile-container" style="margin: 12px 0; display: none; justify-content: center;"></div>
-                <button type="submit" class="btn btn-primary" style="width: 100%;">注 册</button>
+                <button type="submit" class="btn btn-primary" style="width: 100%;">娉?鍐?/button>
                 <div style="text-align: center; margin-top: 12px;">
-                    <a href="javascript:void(0)" onclick="toggleLoginReg(false)" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">已有账号？返回登录</a>
+                    <a href="javascript:void(0)" onclick="toggleLoginReg(false)" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">宸叉湁璐﹀彿锛熻繑鍥炵櫥褰?/a>
                 </div>
             </form>
         </div>
     </div>
 
     <div class="app-container" id="app-container" style="display: none;">
-        <!-- 移动端侧边栏遮罩层 -->
+        <!-- 绉诲姩绔晶杈规爮閬僵灞?-->
         <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar(false)"></div>
-        <!-- 侧边导航栏 -->
+        <!-- 渚ц竟瀵艰埅鏍?-->
         <aside class="sidebar">
             <div class="brand">
-                <span class="logo-icon">🦅</span>
+                <span class="logo-icon">馃</span>
                 <span class="logo-text">TriNet DNS</span>
             </div>
             <nav class="menu">
                 <a href="#dashboard" class="menu-item active" onclick="switchTab('dashboard')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                    控制台
-                </a>
+                    鎺у埗鍙?                </a>
                 <a href="#records" class="menu-item" onclick="switchTab('records')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>
-                    解析记录
+                    瑙ｆ瀽璁板綍
                 </a>
                 <a href="#ddns" class="menu-item" onclick="switchTab('ddns')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6m12-4a9 9 0 0 1-15 6.7L3 16"></path></svg>
-                    动态 DNS
+                    鍔ㄦ€?DNS
                 </a>
                 <a href="#profile" class="menu-item" onclick="switchTab('profile')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    个人中心
+                    涓汉涓績
                 </a>
                 <a href="#billing" class="menu-item" onclick="switchTab('billing')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line><path d="M16 14h2M12 14h.01"></path></svg>
-                    套餐购买
+                    濂楅璐拱
                 </a>
                 <a href="#orders" class="menu-item" onclick="switchTab('orders')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    订单记录
+                    璁㈠崟璁板綍
                 </a>
                 <a href="#logs" class="menu-item" onclick="switchTab('logs')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    系统日志
+                    绯荤粺鏃ュ織
                 </a>
                 <a href="#users" class="menu-item" id="menu-users" onclick="switchTab('users')" style="display: none;">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                    用户管理
+                    鐢ㄦ埛绠＄悊
                 </a>
                 <a href="#settings" class="menu-item" id="menu-settings" onclick="switchTab('settings')" style="display: none;">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    系统设置
+                    绯荤粺璁剧疆
                 </a>
             </nav>
             <div class="sidebar-footer">
                 <div class="status-indicator">
                     <span class="dot active"></span>
-                    <span class="status-text">DNS 引擎已运行</span>
+                    <span class="status-text">DNS 寮曟搸宸茶繍琛?/span>
                 </div>
                 <button class="btn btn-text danger" style="padding: 4px 8px; margin-top: 8px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px;" onclick="logout()">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin: 0;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                    退出登录
-                </button>
+                    閫€鍑虹櫥褰?                </button>
             </div>
         </aside>
 
-        <!-- 主内容区域 -->
+        <!-- 涓诲唴瀹瑰尯鍩?-->
         <main class="main-content">
-            <!-- 顶部栏 -->
+            <!-- 椤堕儴鏍?-->
             <header class="top-bar">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar(true)">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin: 0;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                     </button>
-                    <h1 id="page-title">控制台</h1>
+                    <h1 id="page-title">鎺у埗鍙?/h1>
                 </div>
                 <div class="user-profile">
-                    <span class="server-ip" id="visitor-ip-display">本机 IP: 加载中...</span>
+                    <span class="server-ip" id="visitor-ip-display">鏈満 IP: 鍔犺浇涓?..</span>
                 </div>
             </header>
 
-            <!-- 视窗容器 -->
+            <!-- 瑙嗙獥瀹瑰櫒 -->
             <div class="content-viewport">
-                <!-- 控制台面板 -->
+                <!-- 鎺у埗鍙伴潰鏉?-->
                 <section id="tab-dashboard" class="tab-pane active">
-                    <!-- 状态卡片网格 -->
+                    <!-- 鐘舵€佸崱鐗囩綉鏍?-->
                     <div class="card-grid">
                         <div class="card">
                             <div class="card-header">
-                                <span class="card-title">今日请求总量</span>
-                                <span class="trend positive" id="stat-query-trend" style="display: none;">↑ 0.0%</span>
+                                <span class="card-title">浠婃棩璇锋眰鎬婚噺</span>
+                                <span class="trend positive" id="stat-query-trend" style="display: none;">鈫?0.0%</span>
                             </div>
                             <div class="card-value" id="stat-query-count">0</div>
-                            <div class="card-desc">平均解析响应: 0.8 ms</div>
+                            <div class="card-desc">骞冲潎瑙ｆ瀽鍝嶅簲: 0.8 ms</div>
                         </div>
                         <div class="card">
                             <div class="card-header">
-                                <span class="card-title">当前解析域名</span>
+                                <span class="card-title">褰撳墠瑙ｆ瀽鍩熷悕</span>
                             </div>
                             <div class="card-value">0</div>
-                            <div class="card-desc">活动三网线路: 0 条</div>
+                            <div class="card-desc">娲诲姩涓夌綉绾胯矾: 0 鏉?/div>
                         </div>
                         <div class="card">
                             <div class="card-header">
-                                <span class="card-title">系统运行时间</span>
+                                <span class="card-title">绯荤粺杩愯鏃堕棿</span>
                             </div>
-                            <div class="card-value">已运行</div>
-                            <div class="card-desc">CPU 占用: 0.1% | 内存: 8MB</div>
+                            <div class="card-value">宸茶繍琛?/div>
+                            <div class="card-desc">CPU 鍗犵敤: 0.1% | 鍐呭瓨: 8MB</div>
                         </div>
                         <div class="card">
                             <div class="card-header">
-                                <span class="card-title">集群 NS 解析节点</span>
+                                <span class="card-title">闆嗙兢 NS 瑙ｆ瀽鑺傜偣</span>
                             </div>
-                            <div class="card-value" style="font-size: 0.95rem; line-height: 1.5; font-family: monospace; font-weight: 500; margin-top: 8px; white-space: pre-line;" id="config-ns-list">未配置</div>
-                            <div class="card-desc">域名需修改为此 NS 才能解析</div>
+                            <div class="card-value" style="font-size: 0.95rem; line-height: 1.5; font-family: monospace; font-weight: 500; margin-top: 8px; white-space: pre-line;" id="config-ns-list">鏈厤缃?/div>
+                            <div class="card-desc">鍩熷悕闇€淇敼涓烘 NS 鎵嶈兘瑙ｆ瀽</div>
                         </div>
                     </div>
 
-                    <!-- 三网流量看板 -->
+                    <!-- 涓夌綉娴侀噺鐪嬫澘 -->
                     <div class="section-container">
-                        <h2 class="section-title">三网解析流量分布</h2>
+                        <h2 class="section-title">涓夌綉瑙ｆ瀽娴侀噺鍒嗗竷</h2>
                         <div class="traffic-bars">
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
-                                    <span class="isp-badge ct">中国电信 (China Telecom)</span>
+                                    <span class="isp-badge ct">涓浗鐢典俊 (China Telecom)</span>
                                     <span class="bar-value" id="stat-bar-val-ct">0.0%</span>
                                 </div>
                                 <div class="progress-track">
@@ -192,7 +190,7 @@
                             </div>
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
-                                    <span class="isp-badge cu">中国联通 (China Unicom)</span>
+                                    <span class="isp-badge cu">涓浗鑱旈€?(China Unicom)</span>
                                     <span class="bar-value" id="stat-bar-val-cu">0.0%</span>
                                 </div>
                                 <div class="progress-track">
@@ -201,7 +199,7 @@
                             </div>
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
-                                    <span class="isp-badge cm">中国移动 (China Mobile)</span>
+                                    <span class="isp-badge cm">涓浗绉诲姩 (China Mobile)</span>
                                     <span class="bar-value" id="stat-bar-val-cm">0.0%</span>
                                 </div>
                                 <div class="progress-track">
@@ -210,7 +208,7 @@
                             </div>
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
-                                    <span class="isp-badge def">其他线路 (Default/Others)</span>
+                                    <span class="isp-badge def">鍏朵粬绾胯矾 (Default/Others)</span>
                                     <span class="bar-value" id="stat-bar-val-def">0.0%</span>
                                 </div>
                                 <div class="progress-track">
@@ -220,83 +218,83 @@
                     </div>
                 </section>
 
-                <!-- 解析记录面板 -->
+                <!-- 瑙ｆ瀽璁板綍闈㈡澘 -->
                 <section id="tab-records" class="tab-pane">
                     <div class="table-actions">
-                        <button class="btn btn-primary" onclick="showAddModal()">+ 添加域名解析</button>
+                        <button class="btn btn-primary" onclick="showAddModal()">+ 娣诲姞鍩熷悕瑙ｆ瀽</button>
                         <div class="search-wrapper">
-                            <input type="text" placeholder="搜索域名或 IP..." class="input-search" id="record-search">
+                            <input type="text" placeholder="鎼滅储鍩熷悕鎴?IP..." class="input-search" id="record-search">
                         </div>
                     </div>
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>主机记录</th>
-                                    <th>域名</th>
-                                    <th>类型</th>
-                                    <th>线路</th>
-                                    <th>记录值 (IP / 目标)</th>
+                                    <th>涓绘満璁板綍</th>
+                                    <th>鍩熷悕</th>
+                                    <th>绫诲瀷</th>
+                                    <th>绾胯矾</th>
+                                    <th>璁板綍鍊?(IP / 鐩爣)</th>
                                     <th>TTL</th>
-                                    <th>操作</th>
+                                    <th>鎿嶄綔</th>
                                 </tr>
                             </thead>
                             <tbody id="records-list">
-                                <!-- 由 app.js 动态渲染 -->
+                                <!-- 鐢?app.js 鍔ㄦ€佹覆鏌?-->
                             </tbody>
                         </table>
                     </div>
                 </section>
 
-                <!-- 动态 DNS 面板 -->
+                <!-- 鍔ㄦ€?DNS 闈㈡澘 -->
                 <section id="tab-ddns" class="tab-pane">
                     <div class="section-container">
                         <div class="ddns-header">
-                            <h2>DDNS 客户端配置与密钥</h2>
-                            <button class="btn btn-primary" onclick="generateToken()">+ 生成新 Token</button>
+                            <h2>DDNS 瀹㈡埛绔厤缃笌瀵嗛挜</h2>
+                            <button class="btn btn-primary" onclick="generateToken()">+ 鐢熸垚鏂?Token</button>
                         </div>
-                        <p class="section-desc">您可以使用本系统的 DDNS API 接口，通过客户端（如 RouterOS、OpenWrt 或 curl 脚本）实时上报动态 IP，系统会自动更新对应线路的记录值。</p>
+                        <p class="section-desc">鎮ㄥ彲浠ヤ娇鐢ㄦ湰绯荤粺鐨?DDNS API 鎺ュ彛锛岄€氳繃瀹㈡埛绔紙濡?RouterOS銆丱penWrt 鎴?curl 鑴氭湰锛夊疄鏃朵笂鎶ュ姩鎬?IP锛岀郴缁熶細鑷姩鏇存柊瀵瑰簲绾胯矾鐨勮褰曞€笺€?/p>
                         
                         <div class="table-container margin-top">
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>主机/域名</th>
-                                        <th>对应线路</th>
+                                        <th>涓绘満/鍩熷悕</th>
+                                        <th>瀵瑰簲绾胯矾</th>
                                         <th>Token</th>
-                                        <th>最后更新时间</th>
-                                        <th>操作</th>
+                                        <th>鏈€鍚庢洿鏂版椂闂?/th>
+                                        <th>鎿嶄綔</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <!-- 由 app.js 动态渲染 -->
+                                    <!-- 鐢?app.js 鍔ㄦ€佹覆鏌?-->
                                 </tbody>
                             </table>
                         </div>
 
                         <h3 class="margin-top" style="margin-top: 24px; font-size: 1.15rem; display: flex; align-items: center; justify-content: space-between;">
-                            <span>📚 客户端与全平台自动更新部署教程</span>
-                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted);">点击下方栏目展开折叠教程 👇</span>
+                            <span>馃摎 瀹㈡埛绔笌鍏ㄥ钩鍙拌嚜鍔ㄦ洿鏂伴儴缃叉暀绋?/span>
+                            <span style="font-size: 0.85rem; font-weight: normal; color: var(--text-muted);">鐐瑰嚮涓嬫柟鏍忕洰灞曞紑鎶樺彔鏁欑▼ 馃憞</span>
                         </h3>
 
-                        <!-- 手风琴教程组件容器 -->
+                        <!-- 鎵嬮鐞存暀绋嬬粍浠跺鍣?-->
                         <div class="ddns-accordion-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 12px;">
 
-                            <!-- 1. 基础 API 调用 -->
+                            <!-- 1. 鍩虹 API 璋冪敤 -->
                             <details style="border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.02); overflow: hidden;">
                                 <summary style="padding: 14px 18px; font-weight: 600; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between;">
-                                    <span>🌐 基础 HTTP / Curl 极简上报 API</span>
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">单条 API 命令 ▾</span>
+                                    <span>馃寪 鍩虹 HTTP / Curl 鏋佺畝涓婃姤 API</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">鍗曟潯 API 鍛戒护 鈻?/span>
                                 </summary>
                                 <div style="padding: 16px; border-top: 1px solid var(--border-color);">
-                                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0;">支持使用任意语言或工具发起 HTTP POST 请求进行单个解析线路的 IP 强制刷新。</p>
+                                    <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0;">鏀寔浣跨敤浠绘剰璇█鎴栧伐鍏峰彂璧?HTTP POST 璇锋眰杩涜鍗曚釜瑙ｆ瀽绾胯矾鐨?IP 寮哄埗鍒锋柊銆?/p>
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                        <span style="font-size: 0.85rem; font-weight: 600;">Standard Shell Curl 指令：</span>
-                                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyCodeContent('code-api-base')">📋 复制代码</button>
+                                        <span style="font-size: 0.85rem; font-weight: 600;">Standard Shell Curl 鎸囦护锛?/span>
+                                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyCodeContent('code-api-base')">馃搵 澶嶅埗浠ｇ爜</button>
                                     </div>
                                     <div class="code-block" style="margin: 0;">
-                                        <code id="code-api-base">curl -X POST "http://[本站域名或IP]/api/ddns/update" \
-  -H "Authorization: Bearer [对应线路的Token]" \
+                                        <code id="code-api-base">curl -X POST "http://[鏈珯鍩熷悕鎴朓P]/api/ddns/update" \
+  -H "Authorization: Bearer [瀵瑰簲绾胯矾鐨凾oken]" \
   -d "ip=1.1.1.1"</code>
                                     </div>
                                 </div>
@@ -305,33 +303,32 @@
                             <!-- 2. Linux VPS (Ubuntu / Debian / CentOS) -->
                             <details style="border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.02); overflow: hidden;" open>
                                 <summary style="padding: 14px 18px; font-weight: 600; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between;">
-                                    <span>🐧 Linux VPS 服务器 (Ubuntu / Debian / CentOS) - Cloudflare 三网优选自动同步整套 Shell 脚本</span>
-                                    <span style="font-size: 0.8rem; color: #10b981; font-weight: 600;">推荐 VPS 使用 ▾</span>
+                                    <span>馃惂 Linux VPS 鏈嶅姟鍣?(Ubuntu / Debian / CentOS) - Cloudflare 涓夌綉浼橀€夎嚜鍔ㄥ悓姝ユ暣濂?Shell 鑴氭湰</span>
+                                    <span style="font-size: 0.8rem; color: #10b981; font-weight: 600;">鎺ㄨ崘 VPS 浣跨敤 鈻?/span>
                                 </summary>
                                 <div style="padding: 16px; border-top: 1px solid var(--border-color);">
                                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; line-height: 1.5;">
-                                        本脚本会自动依赖检查与安装（兼容 <code>apt-get</code> 与 <code>yum</code>），自动下载 <strong>CloudflareSpeedTest</strong> 工具进行测速，提取测出的<strong>电信 (CT)、联通 (CU)、移动 (CM)</strong> 前1名最佳 IP 并自动批量提交推送到 TriNet DNS。
-                                    </p>
+                                        鏈剼鏈細鑷姩渚濊禆妫€鏌ヤ笌瀹夎锛堝吋瀹?<code>apt-get</code> 涓?<code>yum</code>锛夛紝鑷姩涓嬭浇 <strong>CloudflareSpeedTest</strong> 宸ュ叿杩涜娴嬮€燂紝鎻愬彇娴嬪嚭鐨?strong>鐢典俊 (CT)銆佽仈閫?(CU)銆佺Щ鍔?(CM)</strong> 鍓?鍚嶆渶浣?IP 骞惰嚜鍔ㄦ壒閲忔彁浜ゆ帹閫佸埌 TriNet DNS銆?                                    </p>
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                        <span style="font-size: 0.85rem; font-weight: 600; color: #10b981;">开箱即用三网自动测速更新 Shell 脚本 (cf_speedtest_trinet.sh)：</span>
-                                        <button class="btn btn-primary" style="padding: 2px 10px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-linux')">📋 一键复制完整 Shell 脚本</button>
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #10b981;">寮€绠卞嵆鐢ㄤ笁缃戣嚜鍔ㄦ祴閫熸洿鏂?Shell 鑴氭湰 (cf_speedtest_trinet.sh)锛?/span>
+                                        <button class="btn btn-primary" style="padding: 2px 10px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-linux')">馃搵 涓€閿鍒跺畬鏁?Shell 鑴氭湰</button>
                                     </div>
                                     <div class="code-block" style="margin: 0; max-height: 320px; overflow-y: auto;">
                                         <code id="code-script-linux">#!/bin/bash
 # =========================================================
-# TriNet DNS - Cloudflare 三网优选 IP 自动测速与同步上报脚本
-# 适配系统: Ubuntu / Debian / CentOS / Alpine / RHEL
+# TriNet DNS - Cloudflare 涓夌綉浼橀€?IP 鑷姩娴嬮€熶笌鍚屾涓婃姤鑴氭湰
+# 閫傞厤绯荤粺: Ubuntu / Debian / CentOS / Alpine / RHEL
 # =========================================================
 
-# --- 【请在此配置您在 TriNet DNS 后台生成的 4 个 Token 与服务地址】 ---
-TRINET_SERVER="http://[您的TriNet服务器域名或IP]"
-TOKEN_DEF="[填写默认线路Token]"   # 默认/三网通用 (DEF)
-TOKEN_CT="[填写电信线路Token]"   # 中国电信 (CT)
-TOKEN_CU="[填写联通线路Token]"   # 中国联通 (CU)
-TOKEN_CM="[填写移动线路Token]"   # 中国移动 (CM)
+# --- 銆愯鍦ㄦ閰嶇疆鎮ㄥ湪 TriNet DNS 鍚庡彴鐢熸垚鐨?4 涓?Token 涓庢湇鍔″湴鍧€銆?---
+TRINET_SERVER="http://[鎮ㄧ殑TriNet鏈嶅姟鍣ㄥ煙鍚嶆垨IP]"
+TOKEN_DEF="[濉啓榛樿绾胯矾Token]"   # 榛樿/涓夌綉閫氱敤 (DEF)
+TOKEN_CT="[濉啓鐢典俊绾胯矾Token]"   # 涓浗鐢典俊 (CT)
+TOKEN_CU="[濉啓鑱旈€氱嚎璺疶oken]"   # 涓浗鑱旈€?(CU)
+TOKEN_CM="[濉啓绉诲姩绾胯矾Token]"   # 涓浗绉诲姩 (CM)
 # -------------------------------------------------------------
 
-# 1. 自动依赖校验
+# 1. 鑷姩渚濊禆鏍￠獙
 if command -v apt-get &> /dev/null; then
     command -v curl &> /dev/null || apt-get update && apt-get install -y curl tar wget
 elif command -v yum &> /dev/null; then
@@ -341,24 +338,24 @@ fi
 WORKDIR="/tmp/cf_speedtest_trinet"
 mkdir -p "$WORKDIR" && cd "$WORKDIR"
 
-# 2. 下载并解压 CloudflareSpeedTest 最新工具 (若本地未下载)
+# 2. 涓嬭浇骞惰В鍘?CloudflareSpeedTest 鏈€鏂板伐鍏?(鑻ユ湰鍦版湭涓嬭浇)
 if [ ! -f "./CloudflareST" ]; then
-    echo "[INFO] 正在获取 CloudflareSpeedTest 测速引擎..."
+    echo "[INFO] 姝ｅ湪鑾峰彇 CloudflareSpeedTest 娴嬮€熷紩鎿?.."
     wget -N --no-check-certificate https://github.com/XIU2/CloudflareSpeedTest/releases/latest/download/CloudflareST_linux_amd64.tar.gz -O CloudflareST.tar.gz
     tar -zxf CloudflareST.tar.gz
     chmod +x CloudflareST
 fi
 
-# 3. 运行测速 (输出结果至 result.csv)
-echo "[INFO] 正在开始三网节点网络延迟与下载速度测试..."
+# 3. 杩愯娴嬮€?(杈撳嚭缁撴灉鑷?result.csv)
+echo "[INFO] 姝ｅ湪寮€濮嬩笁缃戣妭鐐圭綉缁滃欢杩熶笌涓嬭浇閫熷害娴嬭瘯..."
 ./CloudflareST -o result.csv -n 200 -dn 3
 
 if [ ! -f "result.csv" ]; then
-    echo "[ERROR] 测速失败，未生成 result.csv 文件"
+    echo "[ERROR] 娴嬮€熷け璐ワ紝鏈敓鎴?result.csv 鏂囦欢"
     exit 1
 fi
 
-# 4. 提取优选前 3 个响应最佳的 IP
+# 4. 鎻愬彇浼橀€夊墠 3 涓搷搴旀渶浣崇殑 IP
 BEST_IP_1=$(sed -n '2p' result.csv | awk -F, '{print $1}')
 BEST_IP_2=$(sed -n '3p' result.csv | awk -F, '{print $1}')
 BEST_IP_3=$(sed -n '4p' result.csv | awk -F, '{print $1}')
@@ -367,52 +364,49 @@ BEST_IP_3=$(sed -n '4p' result.csv | awk -F, '{print $1}')
 [ -z "$BEST_IP_2" ] && BEST_IP_2="$BEST_IP_1"
 [ -z "$BEST_IP_3" ] && BEST_IP_3="$BEST_IP_1"
 
-echo "[INFO] 测速完成！选出三网最佳 IP: 默认/电信->$BEST_IP_1, 联通->$BEST_IP_2, 移动->$BEST_IP_3"
+echo "[INFO] 娴嬮€熷畬鎴愶紒閫夊嚭涓夌綉鏈€浣?IP: 榛樿/鐢典俊->$BEST_IP_1, 鑱旈€?>$BEST_IP_2, 绉诲姩->$BEST_IP_3"
 
-# 5. 调用 TriNet DNS 接口进行同步更新
-[ -n "$TOKEN_DEF" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_DEF" -d "ip=$BEST_IP_1" && echo " [默认] 已更新"
-[ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$BEST_IP_1" && echo " [电信] 已更新"
-[ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$BEST_IP_2" && echo " [联通] 已更新"
-[ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$BEST_IP_3" && echo " [移动] 已更新"
+# 5. 璋冪敤 TriNet DNS 鎺ュ彛杩涜鍚屾鏇存柊
+[ -n "$TOKEN_DEF" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_DEF" -d "ip=$BEST_IP_1" && echo " [榛樿] 宸叉洿鏂?
+[ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$BEST_IP_1" && echo " [鐢典俊] 宸叉洿鏂?
+[ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$BEST_IP_2" && echo " [鑱旈€歖 宸叉洿鏂?
+[ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$BEST_IP_3" && echo " [绉诲姩] 宸叉洿鏂?
 
-echo "[SUCCESS] 全线路智能解析同步完毕！"</code>
+echo "[SUCCESS] 鍏ㄧ嚎璺櫤鑳借В鏋愬悓姝ュ畬姣曪紒"</code>
                                     </div>
                                     <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
-                                        💡 <strong>定时任务设置提示 (Linux Crontab)</strong>：在终端运行 <code>crontab -e</code> 追加一行：<br>
-                                        <code>*/30 * * * * bash /path/to/cf_speedtest_trinet.sh &> /dev/null</code>（即每 30 分钟自动测试并刷新三网解析）。
-                                    </div>
+                                        馃挕 <strong>瀹氭椂浠诲姟璁剧疆鎻愮ず (Linux Crontab)</strong>锛氬湪缁堢杩愯 <code>crontab -e</code> 杩藉姞涓€琛岋細<br>
+                                        <code>*/30 * * * * bash /path/to/cf_speedtest_trinet.sh &> /dev/null</code>锛堝嵆姣?30 鍒嗛挓鑷姩娴嬭瘯骞跺埛鏂颁笁缃戣В鏋愶級銆?                                    </div>
 
                                     <hr style="margin: 16px 0; border: none; border-top: 1px dashed var(--border-color);">
 
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                        <span style="font-size: 0.85rem; font-weight: 600; color: #3b82f6;">🌐 方案二：无需本地测速，直接从开源 API 自动获取最新三网优选 IP 脚本 (fetch_online_cf_ip.sh)：</span>
-                                        <button class="btn btn-outline" style="padding: 2px 10px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-api-fetch')">📋 一键复制在线抓取脚本</button>
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #3b82f6;">馃寪 鏂规浜岋細鏃犻渶鏈湴娴嬮€燂紝鐩存帴浠庡紑婧?API 鑷姩鑾峰彇鏈€鏂颁笁缃戜紭閫?IP 鑴氭湰 (fetch_online_cf_ip.sh)锛?/span>
+                                        <button class="btn btn-outline" style="padding: 2px 10px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-api-fetch')">馃搵 涓€閿鍒跺湪绾挎姄鍙栬剼鏈?/button>
                                     </div>
                                     <div class="code-block" style="margin: 0; max-height: 260px; overflow-y: auto;">
                                         <code id="code-script-api-fetch">#!/bin/bash
 # =========================================================
-# TriNet DNS - 自动抓取开源 API 三网优选 IP 并推送上报脚本
-# 无需本地测速环境，自动提取网络最新测试的三网极速节点 IP
+# TriNet DNS - 鑷姩鎶撳彇寮€婧?API 涓夌綉浼橀€?IP 骞舵帹閫佷笂鎶ヨ剼鏈?# 鏃犻渶鏈湴娴嬮€熺幆澧冿紝鑷姩鎻愬彇缃戠粶鏈€鏂版祴璇曠殑涓夌綉鏋侀€熻妭鐐?IP
 # =========================================================
 
-TRINET_SERVER="http://[您的TriNet服务器域名或IP]"
-TOKEN_DEF="[填写默认线路Token]"   # 默认/三网通用 (DEF)
-TOKEN_CT="[填写电信线路Token]"   # 中国电信 (CT)
-TOKEN_CU="[填写联通线路Token]"   # 中国联通 (CU)
-TOKEN_CM="[填写移动线路Token]"   # 中国移动 (CM)
+TRINET_SERVER="http://[鎮ㄧ殑TriNet鏈嶅姟鍣ㄥ煙鍚嶆垨IP]"
+TOKEN_DEF="[濉啓榛樿绾胯矾Token]"   # 榛樿/涓夌綉閫氱敤 (DEF)
+TOKEN_CT="[濉啓鐢典俊绾胯矾Token]"   # 涓浗鐢典俊 (CT)
+TOKEN_CU="[濉啓鑱旈€氱嚎璺疶oken]"   # 涓浗鑱旈€?(CU)
+TOKEN_CM="[濉啓绉诲姩绾胯矾Token]"   # 涓浗绉诲姩 (CM)
 
-echo "[INFO] 正在调用专业 API 抓取全网最新 默认+三网 优选 IP..."
+echo "[INFO] 姝ｅ湪璋冪敤涓撲笟 API 鎶撳彇鍏ㄧ綉鏈€鏂?榛樿+涓夌綉 浼橀€?IP..."
 API_DATA=$(curl -s "https://jkapi.com/api/cf_best?server=1&type=v4")
 
-# 从 jkapi 接口精准提取默认/三网通用(CN)、电信(CT)、联通(CU)、移动(CM) 最佳 IP
+# 浠?jkapi 鎺ュ彛绮惧噯鎻愬彇榛樿/涓夌綉閫氱敤(CN)銆佺數淇?CT)銆佽仈閫?CU)銆佺Щ鍔?CM) 鏈€浣?IP
 DEF_IP=$(echo "$API_DATA" | grep -oE '"CN":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
 CT_IP=$(echo "$API_DATA" | grep -oE '"CT":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
 CU_IP=$(echo "$API_DATA" | grep -oE '"CU":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
 CM_IP=$(echo "$API_DATA" | grep -oE '"CM":\[[^]]*' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | head -n 1)
 
-# 如果主 API 超时，自动回退备用源
-if [ -z "$CT_IP" ] || [ -z "$CU_IP" ] || [ -z "$CM_IP" ]; then
-    echo "[WARN] 主源未响应，切换备用源抓取..."
+# 濡傛灉涓?API 瓒呮椂锛岃嚜鍔ㄥ洖閫€澶囩敤婧?if [ -z "$CT_IP" ] || [ -z "$CU_IP" ] || [ -z "$CM_IP" ]; then
+    echo "[WARN] 涓绘簮鏈搷搴旓紝鍒囨崲澶囩敤婧愭姄鍙?.."
     IPS=$(curl -s https://ip.164746.xyz/ | grep -oE '[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort -u)
     [ -z "$DEF_IP" ] && DEF_IP=$(echo "$IPS" | sed -n '1p')
     [ -z "$CT_IP" ] && CT_IP=$(echo "$IPS" | sed -n '1p')
@@ -425,43 +419,42 @@ fi
 [ -z "$CU_IP" ] && CU_IP="104.17.2.2"
 [ -z "$CM_IP" ] && CM_IP="104.18.3.3"
 
-echo "[SUCCESS] 抓取完成！"
-echo "  - 🌐 默认/三网通用 最佳 IP: $DEF_IP"
-echo "  - ⚡ 中国电信 (CT) 最佳 IP: $CT_IP"
-echo "  - ⚡ 中国联通 (CU) 最佳 IP: $CU_IP"
-echo "  - ⚡ 中国移动 (CM) 最佳 IP: $CM_IP"
+echo "[SUCCESS] 鎶撳彇瀹屾垚锛?
+echo "  - 馃寪 榛樿/涓夌綉閫氱敤 鏈€浣?IP: $DEF_IP"
+echo "  - 鈿?涓浗鐢典俊 (CT) 鏈€浣?IP: $CT_IP"
+echo "  - 鈿?涓浗鑱旈€?(CU) 鏈€浣?IP: $CU_IP"
+echo "  - 鈿?涓浗绉诲姩 (CM) 鏈€浣?IP: $CM_IP"
 
-[ -n "$TOKEN_DEF" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_DEF" -d "ip=$DEF_IP" && echo "  ✅ 默认线路解析记录已更新"
-[ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$CT_IP" && echo "  ✅ 电信解析记录已更新"
-[ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$CU_IP" && echo "  ✅ 联通解析记录已更新"
-[ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$CM_IP" && echo "  ✅ 移动解析记录已更新"
+[ -n "$TOKEN_DEF" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_DEF" -d "ip=$DEF_IP" && echo "  鉁?榛樿绾胯矾瑙ｆ瀽璁板綍宸叉洿鏂?
+[ -n "$TOKEN_CT" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CT" -d "ip=$CT_IP" && echo "  鉁?鐢典俊瑙ｆ瀽璁板綍宸叉洿鏂?
+[ -n "$TOKEN_CU" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CU" -d "ip=$CU_IP" && echo "  鉁?鑱旈€氳В鏋愯褰曞凡鏇存柊"
+[ -n "$TOKEN_CM" ] && curl -s -X POST "$TRINET_SERVER/api/ddns/update" -H "Authorization: Bearer $TOKEN_CM" -d "ip=$CM_IP" && echo "  鉁?绉诲姩瑙ｆ瀽璁板綍宸叉洿鏂?
 
-echo "[ALL DONE] 全线路解析记录已成功推送到面板！"</code>
+echo "[ALL DONE] 鍏ㄧ嚎璺В鏋愯褰曞凡鎴愬姛鎺ㄩ€佸埌闈㈡澘锛?</code>
                                     </div>
                                 </div>
                             </details>
 
-                            <!-- 3. OpenWrt 路由器 -->
+                            <!-- 3. OpenWrt 璺敱鍣?-->
                             <details style="border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.02); overflow: hidden;">
                                 <summary style="padding: 14px 18px; font-weight: 600; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between;">
-                                    <span>📶 OpenWrt 软路由 - 动态公网 IP 自动上报脚本与计划任务</span>
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">路由器专属 ▾</span>
+                                    <span>馃摱 OpenWrt 杞矾鐢?- 鍔ㄦ€佸叕缃?IP 鑷姩涓婃姤鑴氭湰涓庤鍒掍换鍔?/span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">璺敱鍣ㄤ笓灞?鈻?/span>
                                 </summary>
                                 <div style="padding: 16px; border-top: 1px solid var(--border-color);">
                                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; line-height: 1.5;">
-                                        适用于 OpenWrt 路由器环境，自动检测 WAN 口公网 IP 变动并向 TriNet DNS 进行同步（适配 <code>curl</code> / <code>wget-ssl</code>）。
-                                    </p>
+                                        閫傜敤浜?OpenWrt 璺敱鍣ㄧ幆澧冿紝鑷姩妫€娴?WAN 鍙ｅ叕缃?IP 鍙樺姩骞跺悜 TriNet DNS 杩涜鍚屾锛堥€傞厤 <code>curl</code> / <code>wget-ssl</code>锛夈€?                                    </p>
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                        <span style="font-size: 0.85rem; font-weight: 600;">OpenWrt 上报脚本 (trinet_openwrt_ddns.sh)：</span>
-                                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-openwrt')">📋 复制 OpenWrt 脚本</button>
+                                        <span style="font-size: 0.85rem; font-weight: 600;">OpenWrt 涓婃姤鑴氭湰 (trinet_openwrt_ddns.sh)锛?/span>
+                                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-openwrt')">馃搵 澶嶅埗 OpenWrt 鑴氭湰</button>
                                     </div>
                                     <div class="code-block" style="margin: 0;">
                                         <code id="code-script-openwrt">#!/bin/sh
-# OpenWrt DDNS 上报脚本
-TRINET_SERVER="http://[您的TriNet服务器域名或IP]"
-TOKEN="[填写您的DDNS_Token]"
+# OpenWrt DDNS 涓婃姤鑴氭湰
+TRINET_SERVER="http://[鎮ㄧ殑TriNet鏈嶅姟鍣ㄥ煙鍚嶆垨IP]"
+TOKEN="[濉啓鎮ㄧ殑DDNS_Token]"
 
-# 提取 WAN 口公网 IP
+# 鎻愬彇 WAN 鍙ｅ叕缃?IP
 WAN_IP=$(curl -s http://api.ipify.org || wget -qO- http://api.ipify.org)
 
 if [ -n "$WAN_IP" ]; then
@@ -471,32 +464,30 @@ if [ -n "$WAN_IP" ]; then
 fi</code>
                                     </div>
                                     <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
-                                        💡 <strong>OpenWrt 定时任务部署</strong>：登录 OpenWrt Web 后台 -> 【系统】 -> 【计划任务】，加入：<br>
-                                        <code>*/5 * * * * sh /etc/trinet_openwrt_ddns.sh &> /dev/null</code>（每 5 分钟自动上报最新公网 IP）。
-                                    </div>
+                                        馃挕 <strong>OpenWrt 瀹氭椂浠诲姟閮ㄧ讲</strong>锛氱櫥褰?OpenWrt Web 鍚庡彴 -> 銆愮郴缁熴€?-> 銆愯鍒掍换鍔°€戯紝鍔犲叆锛?br>
+                                        <code>*/5 * * * * sh /etc/trinet_openwrt_ddns.sh &> /dev/null</code>锛堟瘡 5 鍒嗛挓鑷姩涓婃姤鏈€鏂板叕缃?IP锛夈€?                                    </div>
                                 </div>
                             </details>
 
                             <!-- 4. MikroTik RouterOS (ROS) -->
                             <details style="border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255,255,255,0.02); overflow: hidden;">
                                 <summary style="padding: 14px 18px; font-weight: 600; cursor: pointer; user-select: none; background: rgba(0,0,0,0.02); display: flex; align-items: center; justify-content: space-between;">
-                                    <span>⚡ MikroTik RouterOS (ROS) 路由器 - 原生 Fetch 上报脚本</span>
-                                    <span style="font-size: 0.8rem; color: var(--text-muted);">ROS 专属 ▾</span>
+                                    <span>鈿?MikroTik RouterOS (ROS) 璺敱鍣?- 鍘熺敓 Fetch 涓婃姤鑴氭湰</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">ROS 涓撳睘 鈻?/span>
                                 </summary>
                                 <div style="padding: 16px; border-top: 1px solid var(--border-color);">
                                     <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0; line-height: 1.5;">
-                                        使用 RouterOS 原生脚本语言和 <code>/tool fetch</code> 命令向 TriNet DNS 进行更新。
-                                    </p>
+                                        浣跨敤 RouterOS 鍘熺敓鑴氭湰璇█鍜?<code>/tool fetch</code> 鍛戒护鍚?TriNet DNS 杩涜鏇存柊銆?                                    </p>
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                        <span style="font-size: 0.85rem; font-weight: 600;">RouterOS (ROS) 脚本命令：</span>
-                                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-ros')">📋 复制 ROS 脚本</button>
+                                        <span style="font-size: 0.85rem; font-weight: 600;">RouterOS (ROS) 鑴氭湰鍛戒护锛?/span>
+                                        <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="copyCodeContent('code-script-ros')">馃搵 澶嶅埗 ROS 鑴氭湰</button>
                                     </div>
                                     <div class="code-block" style="margin: 0;">
                                         <code id="code-script-ros"># ROS RouterOS Script
-:local trinetServer "http://[您的TriNet服务器域名或IP]/api/ddns/update"
-:local token "[填写您的DDNS_Token]"
+:local trinetServer "http://[鎮ㄧ殑TriNet鏈嶅姟鍣ㄥ煙鍚嶆垨IP]/api/ddns/update"
+:local token "[濉啓鎮ㄧ殑DDNS_Token]"
 
-# 获取 WAN 口 IP
+# 鑾峰彇 WAN 鍙?IP
 :local wanInterface "pppoe-out1"
 :local currentIP [/ip address get [/ip address find interface=$wanInterface] address]
 :set currentIP [:pick $currentIP 0 [:find $currentIP "/"]]
@@ -507,7 +498,7 @@ fi</code>
 }</code>
                                     </div>
                                     <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);">
-                                        💡 <strong>ROS 定时器部署</strong>：在 WinBox Terminal 输入命令配置 5 分钟定时器：<br>
+                                        馃挕 <strong>ROS 瀹氭椂鍣ㄩ儴缃?/strong>锛氬湪 WinBox Terminal 杈撳叆鍛戒护閰嶇疆 5 鍒嗛挓瀹氭椂鍣細<br>
                                         <code>/system scheduler add name=trinet-ddns interval=5m on-event="/system script run trinet-script"</code>
                                     </div>
                                 </div>
@@ -517,59 +508,58 @@ fi</code>
                     </div>
                 </section>
 
-                <!-- 个人中心面板 -->
+                <!-- 涓汉涓績闈㈡澘 -->
                 <section id="tab-profile" class="tab-pane">
                     <div class="section-container" style="max-width: 900px; margin: 0 auto;">
                         <div class="card" style="padding: 24px; margin-bottom: 24px;">
                             <div style="display: flex; flex-direction: column; gap: 16px;">
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">用户组</span>
-                                    <span id="profile-role-badge" class="badge" style="font-weight: 500;">普通用户</span>
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">鐢ㄦ埛缁?/span>
+                                    <span id="profile-role-badge" class="badge" style="font-weight: 500;">鏅€氱敤鎴?/span>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">套餐</span>
-                                    <strong id="profile-plan-title" style="font-size: 1.05rem;">免费版</strong>
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">濂楅</span>
+                                    <strong id="profile-plan-title" style="font-size: 1.05rem;">鍏嶈垂鐗?/strong>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">套餐失效</span>
-                                    <span id="profile-expires-at" style="font-size: 0.95rem; font-family: monospace;">无限期</span>
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">濂楅澶辨晥</span>
+                                    <span id="profile-expires-at" style="font-size: 0.95rem; font-family: monospace;">鏃犻檺鏈?/span>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">续费价格</span>
-                                    <span style="font-size: 0.95rem; font-weight: 500;"><span id="profile-renew-price">0</span> 元</span>
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">缁垂浠锋牸</span>
+                                    <span style="font-size: 0.95rem; font-weight: 500;"><span id="profile-renew-price">0</span> 鍏?/span>
                                     <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;" onclick="renewProfileWithBalance()">
-                                        🔄 立即续费
+                                        馃攧 绔嬪嵆缁垂
                                     </button>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">最大规则数</span>
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">鏈€澶ц鍒欐暟</span>
                                     <span id="profile-max-rules" style="font-size: 0.95rem; font-weight: 500;">1</span>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">钱包余额</span>
-                                    <span style="font-size: 0.95rem; font-weight: 500;"><span id="profile-balance">0</span> 元</span>
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">閽卞寘浣欓</span>
+                                    <span style="font-size: 0.95rem; font-weight: 500;"><span id="profile-balance">0</span> 鍏?/span>
                                     <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.85rem; display: inline-flex; align-items: center; gap: 4px;" onclick="openRechargeModal()">
-                                        ➕ 充值
-                                    </button>
+                                        鉃?鍏呭€?                                    </button>
                                 </div>
                                 <div style="display: flex; gap: 12px; align-items: center;">
-                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">Telegram 关联</span>
-                                    <span id="profile-tg-status" style="font-size: 0.95rem;">未绑定</span>
-                                    <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.85rem;" onclick="alert('Telegram 机器人暂未开启')">🔗 关联</button>
+                                    <span style="font-size: 0.95rem; color: var(--text-muted); min-width: 90px;">Telegram 鍏宠仈</span>
+                                    <span id="profile-tg-status" style="font-size: 0.95rem;">鏈粦瀹?/span>
+                                    <button class="btn btn-outline" style="padding: 4px 12px; font-size: 0.85rem;" onclick="alert('Telegram 鏈哄櫒浜烘殏鏈紑鍚?)">馃敆 鍏宠仈</button>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- 账户设置 -->
+                        <!-- 璐︽埛璁剧疆 -->
                         <div class="card" style="padding: 24px;">
-                            <h3 style="margin-bottom: 20px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">账户设置</h3>
+                            <h3 style="margin-bottom: 20px; font-size: 1.1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">璐︽埛璁剧疆</h3>
                             
-                            <!-- 自动续费 -->
+                            <!-- 鑷姩缁垂 -->
                             <div style="margin-bottom: 24px;">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                     <div>
-                                        <h4 style="margin: 0 0 6px 0; font-size: 1rem;">自动续费</h4>
-                                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">如果您的套餐临近到期，或者流量用完，系统将自动续费。请保证余额充足，否则会导致续费失败。</p>
+                                        <h4 style="margin: 0 0 6px 0; font-size: 1rem;">鑷姩缁垂</h4>
+                                        <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">濡傛灉鎮ㄧ殑濂楅涓磋繎鍒版湡锛屾垨鑰呮祦閲忕敤瀹岋紝绯荤粺灏嗚嚜鍔ㄧ画璐广€傝淇濊瘉浣欓鍏呰冻锛屽惁鍒欎細瀵艰嚧缁垂澶辫触銆?/p>
                                     </div>
                                     <label class="switch-container">
                                         <input type="checkbox" id="profile-auto-renew-toggle" onchange="handleAutoRenewChange(this.checked)">
@@ -578,117 +568,115 @@ fi</code>
                                 </div>
                             </div>
 
-                            <!-- 重置密码 -->
+                            <!-- 閲嶇疆瀵嗙爜 -->
                             <div>
-                                <h4 style="margin: 0 0 6px 0; font-size: 1rem;">重置密码</h4>
-                                <p style="margin: 0 0 12px 0; font-size: 0.85rem; color: var(--text-muted);">如果您的密码已泄露，可以在这里重置。重置操作会强制下线您在其他地方的登录。</p>
+                                <h4 style="margin: 0 0 6px 0; font-size: 1rem;">閲嶇疆瀵嗙爜</h4>
+                                <p style="margin: 0 0 12px 0; font-size: 0.85rem; color: var(--text-muted);">濡傛灉鎮ㄧ殑瀵嗙爜宸叉硠闇诧紝鍙互鍦ㄨ繖閲岄噸缃€傞噸缃搷浣滀細寮哄埗涓嬬嚎鎮ㄥ湪鍏朵粬鍦版柟鐨勭櫥褰曘€?/p>
                                 <form id="profile-password-form" onsubmit="handleProfilePasswordSubmit(event)" style="display: flex; flex-direction: column; gap: 12px; max-width: 400px;">
-                                    <input type="password" id="profile-old-pass" class="form-control" placeholder="🔑 当前密码" required autocomplete="current-password">
-                                    <input type="password" id="profile-new-pass" class="form-control" placeholder="🔒 新密码" required autocomplete="new-password">
-                                    <input type="password" id="profile-new-pass-confirm" class="form-control" placeholder="🔒 确认新密码" required autocomplete="new-password">
-                                    <button type="submit" class="btn btn-primary" style="width: 120px; margin-top: 4px;">更新密码</button>
+                                    <input type="password" id="profile-old-pass" class="form-control" placeholder="馃攽 褰撳墠瀵嗙爜" required autocomplete="current-password">
+                                    <input type="password" id="profile-new-pass" class="form-control" placeholder="馃敀 鏂板瘑鐮? required autocomplete="new-password">
+                                    <input type="password" id="profile-new-pass-confirm" class="form-control" placeholder="馃敀 纭鏂板瘑鐮? required autocomplete="new-password">
+                                    <button type="submit" class="btn btn-primary" style="width: 120px; margin-top: 4px;">鏇存柊瀵嗙爜</button>
                                 </form>
                             </div>
                         </div>
                     </div>
                 </section>
 
-                <!-- 财务中心面板 -->
+                <!-- 璐㈠姟涓績闈㈡澘 -->
                 <section id="tab-billing" class="tab-pane">
                     <div class="section-container">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
                             <div>
-                                <h2 style="margin: 0; font-size: 1.5rem;">SaaS 域名托管套餐中心</h2>
-                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">升级您的套餐，获取更多域名托管额度，尊享三网独家智能解析服务。</p>
+                                <h2 style="margin: 0; font-size: 1.5rem;">SaaS 鍩熷悕鎵樼濂楅涓績</h2>
+                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">鍗囩骇鎮ㄧ殑濂楅锛岃幏鍙栨洿澶氬煙鍚嶆墭绠￠搴︼紝灏婁韩涓夌綉鐙鏅鸿兘瑙ｆ瀽鏈嶅姟銆?/p>
                             </div>
                             <div class="user-plan-badge-container" style="background: rgba(255, 255, 255, 0.05); padding: 12px 20px; border-radius: 8px; border: 1px solid var(--border-color); text-align: right;">
-                                <div style="font-size: 0.85rem; color: var(--text-muted);">当前套餐 / 到期时间</div>
-                                <div style="font-weight: 600; font-size: 1.1rem; color: var(--primary); margin-top: 2px;" id="billing-user-plan-info">免费版 (无限期)</div>
-                                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" id="billing-user-quota-info">域名额度: 0 / 1</div>
+                                <div style="font-size: 0.85rem; color: var(--text-muted);">褰撳墠濂楅 / 鍒版湡鏃堕棿</div>
+                                <div style="font-weight: 600; font-size: 1.1rem; color: var(--primary); margin-top: 2px;" id="billing-user-plan-info">鍏嶈垂鐗?(鏃犻檺鏈?</div>
+                                <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 2px;" id="billing-user-quota-info">鍩熷悕棰濆害: 0 / 1</div>
                             </div>
                         </div>
 
-                        <!-- 套餐资费卡片网格 -->
+                        <!-- 濂楅璧勮垂鍗＄墖缃戞牸 -->
                         <div class="billing-plans-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 30px;" id="billing-plans-container">
-                            <!-- 由 app.js 动态渲染 -->
+                            <!-- 鐢?app.js 鍔ㄦ€佹覆鏌?-->
                         </div>
 
-                        <!-- USDT 交易验证框 -->
+                        <!-- USDT 浜ゆ槗楠岃瘉妗?-->
                         <div class="card" style="padding: 24px; display: none; margin-top: 24px;" id="usdt-verify-card">
                             <h3 style="margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                                💸 USDT-TRC20 转账确认并自助激活
-                            </h3>
+                                馃捀 USDT-TRC20 杞处纭骞惰嚜鍔╂縺娲?                            </h3>
                             <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
-                                系统支持波场 USDT-TRC20 智能合约收款，实时链上验证。请使用您的加密货币钱包向下方地址转账：<br>
-                                <strong style="color: var(--text-light); word-break: break-all;" id="usdt-pay-address">未配置收款地址</strong><br>
-                                转账金额（需精确）：<strong style="color: #ff9f43; font-size: 1.1rem;" id="usdt-pay-amount">0.00</strong> USDT。转账成功后，请输入交易哈希 (TxID) 并点击确认激活套餐：
+                                绯荤粺鏀寔娉㈠満 USDT-TRC20 鏅鸿兘鍚堢害鏀舵锛屽疄鏃堕摼涓婇獙璇併€傝浣跨敤鎮ㄧ殑鍔犲瘑璐у竵閽卞寘鍚戜笅鏂瑰湴鍧€杞处锛?br>
+                                <strong style="color: var(--text-light); word-break: break-all;" id="usdt-pay-address">鏈厤缃敹娆惧湴鍧€</strong><br>
+                                杞处閲戦锛堥渶绮剧‘锛夛細<strong style="color: #ff9f43; font-size: 1.1rem;" id="usdt-pay-amount">0.00</strong> USDT銆傝浆璐︽垚鍔熷悗锛岃杈撳叆浜ゆ槗鍝堝笇 (TxID) 骞剁偣鍑荤‘璁ゆ縺娲诲椁愶細
                             </p>
                             <form id="usdt-verify-form" onsubmit="verifyUsdtOrder(event)" style="display: flex; gap: 12px; max-width: 600px; flex-wrap: wrap;">
                                 <input type="hidden" id="usdt-verify-order-id">
-                                <input type="text" id="usdt-verify-txid" placeholder="请输入64位交易哈希 (TxID / Transaction Hash)" required class="form-control font-mono" style="flex: 1; min-width: 250px;">
-                                <button type="submit" class="btn btn-primary" style="white-space: nowrap;">确认激活</button>
+                                <input type="text" id="usdt-verify-txid" placeholder="璇疯緭鍏?4浣嶄氦鏄撳搱甯?(TxID / Transaction Hash)" required class="form-control font-mono" style="flex: 1; min-width: 250px;">
+                                <button type="submit" class="btn btn-primary" style="white-space: nowrap;">纭婵€娲?/button>
                             </form>
                         </div>
                     </div>
                 </section>
 
-                <!-- 订单记录面板 -->
+                <!-- 璁㈠崟璁板綍闈㈡澘 -->
                 <section id="tab-orders" class="tab-pane">
                     <div class="section-container">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
                             <div>
-                                <h2 style="margin: 0; font-size: 1.5rem;">订单与支付记录</h2>
-                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">查看您在本系统的所有充值与套餐购买订单及其实时支付状态。</p>
+                                <h2 style="margin: 0; font-size: 1.5rem;">璁㈠崟涓庢敮浠樿褰?/h2>
+                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">鏌ョ湅鎮ㄥ湪鏈郴缁熺殑鎵€鏈夊厖鍊间笌濂楅璐拱璁㈠崟鍙婂叾瀹炴椂鏀粯鐘舵€併€?/p>
                             </div>
-                            <button class="btn btn-secondary" onclick="loadOrdersTable()">刷新订单</button>
+                            <button class="btn btn-secondary" onclick="loadOrdersTable()">鍒锋柊璁㈠崟</button>
                         </div>
                         <div class="table-container card">
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>订单号</th>
-                                        <th>用户名</th>
-                                        <th>套餐</th>
-                                        <th>周期</th>
-                                        <th>价格</th>
-                                        <th>支付方式</th>
-                                        <th>状态</th>
-                                        <th>交易 ID / TxID</th>
-                                        <th>创建时间</th>
+                                        <th>璁㈠崟鍙?/th>
+                                        <th>鐢ㄦ埛鍚?/th>
+                                        <th>濂楅</th>
+                                        <th>鍛ㄦ湡</th>
+                                        <th>浠锋牸</th>
+                                        <th>鏀粯鏂瑰紡</th>
+                                        <th>鐘舵€?/th>
+                                        <th>浜ゆ槗 ID / TxID</th>
+                                        <th>鍒涘缓鏃堕棿</th>
                                     </tr>
                                 </thead>
                                 <tbody id="orders-table-body">
-                                    <!-- 由 app.js 动态渲染 -->
+                                    <!-- 鐢?app.js 鍔ㄦ€佹覆鏌?-->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </section>
 
-                <!-- 系统日志面板 -->
+                <!-- 绯荤粺鏃ュ織闈㈡澘 -->
                 <section id="tab-logs" class="tab-pane">
                     <div class="section-container">
                         <div class="log-actions">
-                            <h3>解析与引擎日志</h3>
-                            <button class="btn btn-secondary" onclick="clearLogs()">清除日志</button>
+                            <h3>瑙ｆ瀽涓庡紩鎿庢棩蹇?/h3>
+                            <button class="btn btn-secondary" onclick="clearLogs()">娓呴櫎鏃ュ織</button>
                         </div>
                         <div class="log-viewport" id="log-container">
-                            <!-- 实时推流展示 -->
+                            <!-- 瀹炴椂鎺ㄦ祦灞曠ず -->
                         </div>
                     </div>
                 </section>
 
-                <!-- 用户管理面板 (仅管理员可见) -->
+                <!-- 鐢ㄦ埛绠＄悊闈㈡澘 (浠呯鐞嗗憳鍙) -->
                 <section id="tab-users" class="tab-pane">
                     <div class="section-container">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
                             <div>
-                                <h2 style="margin: 0; font-size: 1.5rem;">用户全权管理控制台</h2>
-                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">管理全站所有注册用户，可直接后台为用户调整余额、修改套餐、延期与重置密码。</p>
+                                <h2 style="margin: 0; font-size: 1.5rem;">鐢ㄦ埛鍏ㄦ潈绠＄悊鎺у埗鍙?/h2>
+                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">绠＄悊鍏ㄧ珯鎵€鏈夋敞鍐岀敤鎴凤紝鍙洿鎺ュ悗鍙颁负鐢ㄦ埛璋冩暣浣欓銆佷慨鏀瑰椁愩€佸欢鏈熶笌閲嶇疆瀵嗙爜銆?/p>
                             </div>
                             <button class="btn btn-primary" onclick="openAdminCreateUserModal()">
-                                ➕ 手动添加新用户
-                            </button>
+                                鉃?鎵嬪姩娣诲姞鏂扮敤鎴?                            </button>
                         </div>
                         
                         <div class="table-container card">
@@ -696,37 +684,37 @@ fi</code>
                                 <thead>
                                     <tr>
                                         <th>ID</th>
-                                        <th>用户名</th>
-                                        <th>角色</th>
-                                        <th>当前套餐</th>
-                                        <th>到期时间</th>
-                                        <th>钱包余额</th>
-                                        <th>已托管域名数</th>
-                                        <th>操作</th>
+                                        <th>鐢ㄦ埛鍚?/th>
+                                        <th>瑙掕壊</th>
+                                        <th>褰撳墠濂楅</th>
+                                        <th>鍒版湡鏃堕棿</th>
+                                        <th>閽卞寘浣欓</th>
+                                        <th>宸叉墭绠″煙鍚嶆暟</th>
+                                        <th>鎿嶄綔</th>
                                     </tr>
                                 </thead>
                                 <tbody id="users-table-body">
-                                    <!-- 由 app.js 动态渲染 -->
+                                    <!-- 鐢?app.js 鍔ㄦ€佹覆鏌?-->
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 </section>
 
-                <!-- 系统设置面板 (仅管理员可见) -->
+                <!-- 绯荤粺璁剧疆闈㈡澘 (浠呯鐞嗗憳鍙) -->
                 <section id="tab-settings" class="tab-pane">
                     <div class="section-container">
-                        <h2 class="section-title">系统管理设置</h2>
+                        <h2 class="section-title">绯荤粺绠＄悊璁剧疆</h2>
                         
-                        <!-- 基础配置 -->
+                        <!-- 鍩虹閰嶇疆 -->
                         <div class="card" style="padding: 24px; margin-bottom: 24px;">
                             <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                                ⚙️ 基础服务配置
+                                鈿欙笍 鍩虹鏈嶅姟閰嶇疆
                             </h3>
                             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color);">
                                 <div>
-                                    <h4 style="margin: 0; font-size: 0.95rem;">开放自服务用户注册</h4>
-                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">启用后，主控登录页会显示“立即注册”入口</p>
+                                    <h4 style="margin: 0; font-size: 0.95rem;">寮€鏀捐嚜鏈嶅姟鐢ㄦ埛娉ㄥ唽</h4>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">鍚敤鍚庯紝涓绘帶鐧诲綍椤典細鏄剧ず鈥滅珛鍗虫敞鍐屸€濆叆鍙?/p>
                                 </div>
                                 <label class="switch-container">
                                     <input type="checkbox" id="setting-open-reg" onchange="updateBasicSetting('open_registration', this.checked)">
@@ -735,15 +723,15 @@ fi</code>
                             </div>
                         </div>
 
-                        <!-- Cloudflare Turnstile 人机验证 -->
+                        <!-- Cloudflare Turnstile 浜烘満楠岃瘉 -->
                         <div class="card" style="padding: 24px; margin-bottom: 24px;">
                             <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                                🛡️ Cloudflare Turnstile 防刷保护
+                                馃洝锔?Cloudflare Turnstile 闃插埛淇濇姢
                             </h3>
                             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
                                 <div>
-                                    <h4 style="margin: 0; font-size: 0.95rem;">启用 Turnstile 验证</h4>
-                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">防范恶意的注册机刷库，自动识别并阻止人机模拟</p>
+                                    <h4 style="margin: 0; font-size: 0.95rem;">鍚敤 Turnstile 楠岃瘉</h4>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">闃茶寖鎭舵剰鐨勬敞鍐屾満鍒峰簱锛岃嚜鍔ㄨ瘑鍒苟闃绘浜烘満妯℃嫙</p>
                                 </div>
                                 <label class="switch-container">
                                     <input type="checkbox" id="setting-cf-enabled" onchange="updateBasicSetting('cf_turnstile_enabled', this.checked)">
@@ -753,27 +741,27 @@ fi</code>
                             <form id="setting-cf-form" onsubmit="saveTurnstileKeys(event)">
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="setting-cf-site-key">Site Key (前端网站密钥)</label>
-                                        <input type="text" id="setting-cf-site-key" placeholder="例如: 0x4AAAAAAAB..." class="form-control font-mono">
+                                        <label for="setting-cf-site-key">Site Key (鍓嶇缃戠珯瀵嗛挜)</label>
+                                        <input type="text" id="setting-cf-site-key" placeholder="渚嬪: 0x4AAAAAAAB..." class="form-control font-mono">
                                     </div>
                                     <div class="form-group">
-                                        <label for="setting-cf-secret-key">Secret Key (后端通信密钥)</label>
-                                        <input type="password" id="setting-cf-secret-key" placeholder="例如: 0x4AAAAAAAB..." class="form-control font-mono">
+                                        <label for="setting-cf-secret-key">Secret Key (鍚庣閫氫俊瀵嗛挜)</label>
+                                        <input type="password" id="setting-cf-secret-key" placeholder="渚嬪: 0x4AAAAAAAB..." class="form-control font-mono">
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary" style="margin-top: 8px;">保存 Turnstile 密钥</button>
+                                <button type="submit" class="btn btn-primary" style="margin-top: 8px;">淇濆瓨 Turnstile 瀵嗛挜</button>
                             </form>
                         </div>
 
-                        <!-- Cloudflare 三网优选 IP 自动同步 -->
+                        <!-- Cloudflare 涓夌綉浼橀€?IP 鑷姩鍚屾 -->
                         <div class="card" style="padding: 24px; margin-bottom: 24px;">
                             <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                                ⚡ Cloudflare 三网优选 IP 自动同步
+                                鈿?Cloudflare 涓夌綉浼橀€?IP 鑷姩鍚屾
                             </h3>
                             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 16px;">
                                 <div>
-                                    <h4 style="margin: 0; font-size: 0.95rem;">启用三网优选 IP 自动更新</h4>
-                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">通过国内多节点实时监测 API，自动将指定域名解析到最快且无丢包的 Cloudflare 节点</p>
+                                    <h4 style="margin: 0; font-size: 0.95rem;">鍚敤涓夌綉浼橀€?IP 鑷姩鏇存柊</h4>
+                                    <p style="color: var(--text-muted); font-size: 0.85rem; margin: 4px 0 0 0;">閫氳繃鍥藉唴澶氳妭鐐瑰疄鏃剁洃娴?API锛岃嚜鍔ㄥ皢鎸囧畾鍩熷悕瑙ｆ瀽鍒版渶蹇笖鏃犱涪鍖呯殑 Cloudflare 鑺傜偣</p>
                                 </div>
                                 <label class="switch-container">
                                     <input type="checkbox" id="setting-cf-best-enabled" onchange="updateBasicSetting('cf_best_enabled', this.checked)">
@@ -782,231 +770,228 @@ fi</code>
                             </div>
                             <form id="setting-cf-best-form" onsubmit="saveCFBestSettings(event)">
                                 <div class="form-group" style="margin-bottom: 12px;">
-                                    <label for="setting-cf-best-api-url">优选 IP API 接口地址 (支持配置多个备份接口，以英文逗号 , 分隔，需符合相同 JSON 格式)</label>
+                                    <label for="setting-cf-best-api-url">浼橀€?IP API 鎺ュ彛鍦板潃 (鏀寔閰嶇疆澶氫釜澶囦唤鎺ュ彛锛屼互鑻辨枃閫楀彿 , 鍒嗛殧锛岄渶绗﹀悎鐩稿悓 JSON 鏍煎紡)</label>
                                     <input type="text" id="setting-cf-best-api-url" placeholder="https://jkapi.com/api/cf_best?server=1&type=v4" required class="form-control font-mono">
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
-                                        <label for="setting-cf-best-domain">目标解析域名 (支持多个，以英文逗号 , 分隔)</label>
-                                        <input type="text" id="setting-cf-best-domain" placeholder="例如: cf1.cngoodok.org,cf2.cngoodok.org" required class="form-control font-mono">
+                                        <label for="setting-cf-best-domain">鐩爣瑙ｆ瀽鍩熷悕 (鏀寔澶氫釜锛屼互鑻辨枃閫楀彿 , 鍒嗛殧)</label>
+                                        <input type="text" id="setting-cf-best-domain" placeholder="渚嬪: cf1.cngoodok.org,cf2.cngoodok.org" required class="form-control font-mono">
                                     </div>
                                     <div class="form-group">
-                                        <label for="setting-cf-best-interval">自动检测更新间隔</label>
+                                        <label for="setting-cf-best-interval">鑷姩妫€娴嬫洿鏂伴棿闅?/label>
                                         <select id="setting-cf-best-interval" class="form-control">
-                                            <option value="15">每 15 分钟</option>
-                                            <option value="30">每 30 分钟 (推荐)</option>
-                                            <option value="60">每 1 小时</option>
-                                            <option value="120">每 2 小时</option>
-                                            <option value="240">每 4 小时</option>
-                                            <option value="360">每 6 小时 (更稳定)</option>
-                                            <option value="720">每 12 小时</option>
-                                            <option value="1440">每 24 小时 (省资源)</option>
+                                            <option value="15">姣?15 鍒嗛挓</option>
+                                            <option value="30">姣?30 鍒嗛挓 (鎺ㄨ崘)</option>
+                                            <option value="60">姣?1 灏忔椂</option>
+                                            <option value="120">姣?2 灏忔椂</option>
+                                            <option value="240">姣?4 灏忔椂</option>
+                                            <option value="360">姣?6 灏忔椂 (鏇寸ǔ瀹?</option>
+                                            <option value="720">姣?12 灏忔椂</option>
+                                            <option value="1440">姣?24 灏忔椂 (鐪佽祫婧?</option>
                                         </select>
                                     </div>
                                 </div>
-                                <button type="submit" class="btn btn-primary" style="margin-top: 12px;">保存优选同步设置</button>
+                                <button type="submit" class="btn btn-primary" style="margin-top: 12px;">淇濆瓨浼橀€夊悓姝ヨ缃?/button>
                             </form>
                         </div>
 
-                        <!-- 节点同步及集群配置 -->
+                        <!-- 鑺傜偣鍚屾鍙婇泦缇ら厤缃?-->
                         <div class="card" style="padding: 24px; margin-bottom: 24px;">
                             <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                                🔗 节点同步与集群配置
-                            </h3>
+                                馃敆 鑺傜偣鍚屾涓庨泦缇ら厤缃?                            </h3>
                             <div class="form-group">
-                                <label>集群节点同步 Token (Sync Token)</label>
+                                <label>闆嗙兢鑺傜偣鍚屾 Token (Sync Token)</label>
                                 <div style="display: flex; gap: 8px; margin-top: 4px;">
                                     <input type="text" id="setting-sync-token" readonly class="form-control font-mono" style="background: rgba(255,255,255,0.05); color: var(--text-light); border-color: transparent;">
-                                    <button class="btn btn-outline" onclick="copyToClipboard('setting-sync-token')">复制</button>
+                                    <button class="btn btn-outline" onclick="copyToClipboard('setting-sync-token')">澶嶅埗</button>
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label>备用节点一键配置 API 地址 (Sync URL)</label>
+                                <label>澶囩敤鑺傜偣涓€閿厤缃?API 鍦板潃 (Sync URL)</label>
                                 <div style="display: flex; gap: 8px; margin-top: 4px;">
                                     <input type="text" id="setting-sync-url" readonly class="form-control font-mono" style="background: rgba(255,255,255,0.05); color: var(--text-light); border-color: transparent;">
-                                    <button class="btn btn-outline" onclick="copyToClipboard('setting-sync-url')">复制</button>
+                                    <button class="btn btn-outline" onclick="copyToClipboard('setting-sync-url')">澶嶅埗</button>
                                 </div>
                             </div>
                             <form id="setting-ns-form" onsubmit="saveNSNodes(event)">
                                 <div class="form-group">
-                                    <label for="setting-ns-nodes">集群 NS 域名解析节点 (一行一个)</label>
-                                    <textarea id="setting-ns-nodes" class="form-control font-mono" style="height: 100px; resize: vertical; margin-top: 4px;" required placeholder="例如:&#10;ns1.trinet-dns.com&#10;ns2.trinet-dns.com"></textarea>
+                                    <label for="setting-ns-nodes">闆嗙兢 NS 鍩熷悕瑙ｆ瀽鑺傜偣 (涓€琛屼竴涓?</label>
+                                    <textarea id="setting-ns-nodes" class="form-control font-mono" style="height: 100px; resize: vertical; margin-top: 4px;" required placeholder="渚嬪:&#10;ns1.trinet-dns.com&#10;ns2.trinet-dns.com"></textarea>
                                 </div>
-                                <button type="submit" class="btn btn-primary" style="margin-top: 8px;">保存 NS 解析节点</button>
+                                <button type="submit" class="btn btn-primary" style="margin-top: 8px;">淇濆瓨 NS 瑙ｆ瀽鑺傜偣</button>
                             </form>
                         </div>
 
-                        <!-- 域名套餐配置 -->
+                        <!-- 鍩熷悕濂楅閰嶇疆 -->
                         <div class="card" style="padding: 24px; margin-bottom: 24px;">
                             <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                                👑 域名套餐与额度配置
-                            </h3>
+                                馃憫 鍩熷悕濂楅涓庨搴﹂厤缃?                            </h3>
                             <form id="setting-plans-form" onsubmit="savePlanSettings(event)">
                                 <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
-                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">免费版套餐限额</h4>
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">鍏嶈垂鐗堝椁愰檺棰?/h4>
                                     <div class="form-group" style="max-width: 300px;">
-                                        <label for="setting-plan-free-limit">免费版域名限额 (个)</label>
+                                        <label for="setting-plan-free-limit">鍏嶈垂鐗堝煙鍚嶉檺棰?(涓?</label>
                                         <input type="number" id="setting-plan-free-limit" class="form-control" required min="0">
                                     </div>
                                 </div>
 
                                 <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
-                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">初级套餐设置</h4>
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">鍒濈骇濂楅璁剧疆</h4>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="setting-plan-junior-name">套餐名称</label>
+                                            <label for="setting-plan-junior-name">濂楅鍚嶇О</label>
                                             <input type="text" id="setting-plan-junior-name" class="form-control" required>
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-junior-limit">域名托管限制 (个)</label>
+                                            <label for="setting-plan-junior-limit">鍩熷悕鎵樼闄愬埗 (涓?</label>
                                             <input type="number" id="setting-plan-junior-limit" class="form-control" required min="0">
                                         </div>
                                     </div>
                                     <div class="form-row" style="margin-top: 12px;">
                                         <div class="form-group">
-                                            <label for="setting-plan-junior-monthly">月付价格 (元)</label>
+                                            <label for="setting-plan-junior-monthly">鏈堜粯浠锋牸 (鍏?</label>
                                             <input type="number" id="setting-plan-junior-monthly" class="form-control" required min="0" step="0.01">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-junior-quarterly">季付价格 (元)</label>
+                                            <label for="setting-plan-junior-quarterly">瀛ｄ粯浠锋牸 (鍏?</label>
                                             <input type="number" id="setting-plan-junior-quarterly" class="form-control" required min="0" step="0.01">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-junior-semiannually">半年付价格 (元)</label>
+                                            <label for="setting-plan-junior-semiannually">鍗婂勾浠樹环鏍?(鍏?</label>
                                             <input type="number" id="setting-plan-junior-semiannually" class="form-control" required min="0" step="0.01">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-junior-annually">年付价格 (元)</label>
+                                            <label for="setting-plan-junior-annually">骞翠粯浠锋牸 (鍏?</label>
                                             <input type="number" id="setting-plan-junior-annually" class="form-control" required min="0" step="0.01">
                                         </div>
                                     </div>
                                 </div>
 
                                 <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
-                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">中级套餐设置</h4>
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">涓骇濂楅璁剧疆</h4>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="setting-plan-intermediate-name">套餐名称</label>
+                                            <label for="setting-plan-intermediate-name">濂楅鍚嶇О</label>
                                             <input type="text" id="setting-plan-intermediate-name" class="form-control" required>
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-intermediate-limit">域名托管限制 (个)</label>
+                                            <label for="setting-plan-intermediate-limit">鍩熷悕鎵樼闄愬埗 (涓?</label>
                                             <input type="number" id="setting-plan-intermediate-limit" class="form-control" required min="0">
                                         </div>
                                     </div>
                                     <div class="form-row" style="margin-top: 12px;">
                                         <div class="form-group">
-                                            <label for="setting-plan-intermediate-monthly">月付价格 (元)</label>
+                                            <label for="setting-plan-intermediate-monthly">鏈堜粯浠锋牸 (鍏?</label>
                                             <input type="number" id="setting-plan-intermediate-monthly" class="form-control" required min="0" step="0.01">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-intermediate-quarterly">季付价格 (元)</label>
+                                            <label for="setting-plan-intermediate-quarterly">瀛ｄ粯浠锋牸 (鍏?</label>
                                             <input type="number" id="setting-plan-intermediate-quarterly" class="form-control" required min="0" step="0.01">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-intermediate-semiannually">半年付价格 (元)</label>
+                                            <label for="setting-plan-intermediate-semiannually">鍗婂勾浠樹环鏍?(鍏?</label>
                                             <input type="number" id="setting-plan-intermediate-semiannually" class="form-control" required min="0" step="0.01">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-intermediate-annually">年付价格 (元)</label>
+                                            <label for="setting-plan-intermediate-annually">骞翠粯浠锋牸 (鍏?</label>
                                             <input type="number" id="setting-plan-intermediate-annually" class="form-control" required min="0" step="0.01">
                                         </div>
                                     </div>
                                 </div>
 
                                 <div style="margin-bottom: 16px;">
-                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">高级套餐设置</h4>
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">楂樼骇濂楅璁剧疆</h4>
                                     <div class="form-row">
                                         <div class="form-group">
-                                            <label for="setting-plan-senior-name">套餐名称</label>
+                                            <label for="setting-plan-senior-name">濂楅鍚嶇О</label>
                                             <input type="text" id="setting-plan-senior-name" class="form-control" required>
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-senior-limit">域名托管限制 (个)</label>
+                                            <label for="setting-plan-senior-limit">鍩熷悕鎵樼闄愬埗 (涓?</label>
                                             <input type="number" id="setting-plan-senior-limit" class="form-control" required min="0">
                                         </div>
                                     </div>
                                     <div class="form-row" style="margin-top: 12px;">
                                         <div class="form-group">
-                                            <label for="setting-plan-senior-monthly">月付价格 (元)</label>
+                                            <label for="setting-plan-senior-monthly">鏈堜粯浠锋牸 (鍏?</label>
                                             <input type="number" id="setting-plan-senior-monthly" class="form-control" required min="0" step="0.01">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-senior-quarterly">季付价格 (元)</label>
+                                            <label for="setting-plan-senior-quarterly">瀛ｄ粯浠锋牸 (鍏?</label>
                                             <input type="number" id="setting-plan-senior-quarterly" class="form-control" required min="0" step="0.01">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-senior-semiannually">半年付价格 (元)</label>
+                                            <label for="setting-plan-senior-semiannually">鍗婂勾浠樹环鏍?(鍏?</label>
                                             <input type="number" id="setting-plan-senior-semiannually" class="form-control" required min="0" step="0.01">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-plan-senior-annually">年付价格 (元)</label>
+                                            <label for="setting-plan-senior-annually">骞翠粯浠锋牸 (鍏?</label>
                                             <input type="number" id="setting-plan-senior-annually" class="form-control" required min="0" step="0.01">
                                         </div>
                                     </div>
                                 </div>
 
-                                <button type="submit" class="btn btn-primary">保存套餐与资费设置</button>
+                                <button type="submit" class="btn btn-primary">淇濆瓨濂楅涓庤祫璐硅缃?/button>
                             </form>
                         </div>
 
-                        <!-- 支付接口与网关配置 -->
+                        <!-- 鏀粯鎺ュ彛涓庣綉鍏抽厤缃?-->
                         <div class="card" style="padding: 24px;">
                             <h3 style="margin-bottom: 16px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-                                💳 支付接口与网关配置
-                            </h3>
+                                馃挸 鏀粯鎺ュ彛涓庣綉鍏抽厤缃?                            </h3>
                             <form id="setting-payments-form" onsubmit="savePaymentSettings(event)">
                                 <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
-                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">易支付 (Epay) 配置</h4>
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">鏄撴敮浠?(Epay) 閰嶇疆</h4>
                                     <div class="form-group">
-                                        <label for="setting-epay-url">支付网关 API 地址</label>
-                                        <input type="url" id="setting-epay-url" placeholder="例如: https://pay.example.com/" class="form-control font-mono">
+                                        <label for="setting-epay-url">鏀粯缃戝叧 API 鍦板潃</label>
+                                        <input type="url" id="setting-epay-url" placeholder="渚嬪: https://pay.example.com/" class="form-control font-mono">
                                     </div>
                                     <div class="form-row" style="margin-top: 12px;">
                                         <div class="form-group">
-                                            <label for="setting-epay-pid">商户 ID (Partner ID)</label>
-                                            <input type="text" id="setting-epay-pid" placeholder="例如: 1000" class="form-control font-mono">
+                                            <label for="setting-epay-pid">鍟嗘埛 ID (Partner ID)</label>
+                                            <input type="text" id="setting-epay-pid" placeholder="渚嬪: 1000" class="form-control font-mono">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-epay-key">商户密钥 (Secret Key)</label>
-                                            <input type="password" id="setting-epay-key" placeholder="易支付 MD5 密钥" class="form-control font-mono">
+                                            <label for="setting-epay-key">鍟嗘埛瀵嗛挜 (Secret Key)</label>
+                                            <input type="password" id="setting-epay-key" placeholder="鏄撴敮浠?MD5 瀵嗛挜" class="form-control font-mono">
                                         </div>
                                     </div>
                                 </div>
 
                                 <div style="border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 16px;">
-                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">MGate 网关配置</h4>
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">MGate 缃戝叧閰嶇疆</h4>
                                     <div class="form-group">
-                                        <label for="setting-mgate-url">MGate 接口 URL</label>
-                                        <input type="url" id="setting-mgate-url" placeholder="例如: https://mgate.example.com" class="form-control font-mono">
+                                        <label for="setting-mgate-url">MGate 鎺ュ彛 URL</label>
+                                        <input type="url" id="setting-mgate-url" placeholder="渚嬪: https://mgate.example.com" class="form-control font-mono">
                                     </div>
                                     <div class="form-row" style="margin-top: 12px;">
                                         <div class="form-group">
-                                            <label for="setting-mgate-appid">应用 ID (App ID)</label>
+                                            <label for="setting-mgate-appid">搴旂敤 ID (App ID)</label>
                                             <input type="text" id="setting-mgate-appid" placeholder="MGate App ID" class="form-control font-mono">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-mgate-key">应用密钥 (App Secret)</label>
+                                            <label for="setting-mgate-key">搴旂敤瀵嗛挜 (App Secret)</label>
                                             <input type="password" id="setting-mgate-key" placeholder="MGate Secret Key" class="form-control font-mono">
                                         </div>
                                     </div>
                                 </div>
 
                                 <div style="margin-bottom: 16px;">
-                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">USDT (TRC-20) 收款配置</h4>
+                                    <h4 style="margin: 0 0 12px 0; color: var(--primary);">USDT (TRC-20) 鏀舵閰嶇疆</h4>
                                     <div class="form-row">
                                         <div class="form-group" style="flex: 2;">
-                                            <label for="setting-usdt-address">USDT 收款钱包地址 (TRC-20 地址)</label>
-                                            <input type="text" id="setting-usdt-address" placeholder="以 T 开头的 34 位波场钱包地址" class="form-control font-mono">
+                                            <label for="setting-usdt-address">USDT 鏀舵閽卞寘鍦板潃 (TRC-20 鍦板潃)</label>
+                                            <input type="text" id="setting-usdt-address" placeholder="浠?T 寮€澶寸殑 34 浣嶆尝鍦洪挶鍖呭湴鍧€" class="form-control font-mono">
                                         </div>
                                         <div class="form-group">
-                                            <label for="setting-usdt-rate">USDT 对人民币汇率 (CNY)</label>
-                                            <input type="number" id="setting-usdt-rate" placeholder="例如: 7.00" class="form-control" min="0" step="0.01">
+                                            <label for="setting-usdt-rate">USDT 瀵逛汉姘戝竵姹囩巼 (CNY)</label>
+                                            <input type="number" id="setting-usdt-rate" placeholder="渚嬪: 7.00" class="form-control" min="0" step="0.01">
                                         </div>
                                     </div>
                                 </div>
 
-                                <button type="submit" class="btn btn-primary">保存支付网关设置</button>
+                                <button type="submit" class="btn btn-primary">淇濆瓨鏀粯缃戝叧璁剧疆</button>
                             </form>
                         </div>
                     </div>
@@ -1015,346 +1000,231 @@ fi</code>
         </main>
     </div>
 
-    <!-- 添加/编辑记录模态弹窗 -->
+    <!-- 娣诲姞/缂栬緫璁板綍妯℃€佸脊绐?-->
     <div class="modal-overlay" id="record-modal">
         <div class="modal">
             <div class="modal-header">
-                <h3 id="modal-title">添加域名解析</h3>
-                <button class="modal-close" onclick="closeModal()">×</button>
+                <h3 id="modal-title">娣诲姞鍩熷悕瑙ｆ瀽</h3>
+                <button class="modal-close" onclick="closeModal()">脳</button>
             </div>
             <div class="modal-body">
                 <form id="record-form" onsubmit="saveRecord(event)">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="input-subdomain">主机记录</label>
-                            <input type="text" id="input-subdomain" placeholder="例如: www" required class="form-control font-mono">
+                            <label for="input-subdomain">涓绘満璁板綍</label>
+                            <input type="text" id="input-subdomain" placeholder="渚嬪: www" required class="form-control font-mono">
                         </div>
                         <div class="form-group">
-                            <label for="input-domain">域名</label>
+                            <label for="input-domain">鍩熷悕</label>
                             <input type="text" id="input-domain" value="example.com" required class="form-control font-mono">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="select-type">记录类型</label>
+                            <label for="select-type">璁板綍绫诲瀷</label>
                             <select id="select-type" class="form-control">
                                 <option value="A">A (IPv4)</option>
                                 <option value="AAAA">AAAA (IPv6)</option>
-                                <option value="CNAME">CNAME (别名)</option>
+                                <option value="CNAME">CNAME (鍒悕)</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="select-isp">解析线路</label>
-                            <select id="select-isp" class="form-control">
-                                <option value="def">默认 (Default)</option>
-                                
-                                <optgroup label="中国电信 (CT)">
-                                    <option value="ct">全网电信 (默认)</option>
-                                    <option value="ct_bj">北京电信</option>
-                                    <option value="ct_tj">天津电信</option>
-                                    <option value="ct_he">河北电信</option>
-                                    <option value="ct_sx">山西电信</option>
-                                    <option value="ct_nm">内蒙古电信</option>
-                                    <option value="ct_ln">辽宁电信</option>
-                                    <option value="ct_jl">吉林电信</option>
-                                    <option value="ct_hl">黑龙江电信</option>
-                                    <option value="ct_sh">上海电信</option>
-                                    <option value="ct_js">江苏电信</option>
-                                    <option value="ct_zj">浙江电信</option>
-                                    <option value="ct_ah">安徽电信</option>
-                                    <option value="ct_fj">福建电信</option>
-                                    <option value="ct_jx">江西电信</option>
-                                    <option value="ct_sd">山东电信</option>
-                                    <option value="ct_ha">河南电信</option>
-                                    <option value="ct_hb">湖北电信</option>
-                                    <option value="ct_hn">湖南电信</option>
-                                    <option value="ct_gd">广东电信</option>
-                                    <option value="ct_gx">广西电信</option>
-                                    <option value="ct_hi">海南电信</option>
-                                    <option value="ct_cq">重庆电信</option>
-                                    <option value="ct_sc">四川电信</option>
-                                    <option value="ct_gz">贵州电信</option>
-                                    <option value="ct_yn">云南电信</option>
-                                    <option value="ct_xz">西藏电信</option>
-                                    <option value="ct_sn">陕西电信</option>
-                                    <option value="ct_gs">甘肃电信</option>
-                                    <option value="ct_qh">青海电信</option>
-                                    <option value="ct_nx">宁夏电信</option>
-                                    <option value="ct_xj">新疆电信</option>
-                                    <option value="ct_tw">台湾 (CT)</option>
-                                    <option value="ct_xg">香港 (CT)</option>
-                                    <option value="ct_am">澳门 (CT)</option>
-                                </optgroup>
-                                
-                                <optgroup label="中国联通 (CU)">
-                                    <option value="cu">全网联通 (默认)</option>
-                                    <option value="cu_bj">北京联通</option>
-                                    <option value="cu_tj">天津联通</option>
-                                    <option value="cu_he">河北联通</option>
-                                    <option value="cu_sx">山西联通</option>
-                                    <option value="cu_nm">内蒙古联通</option>
-                                    <option value="cu_ln">辽宁联通</option>
-                                    <option value="cu_jl">吉林联通</option>
-                                    <option value="cu_hl">黑龙江联通</option>
-                                    <option value="cu_sh">上海联通</option>
-                                    <option value="cu_js">江苏联通</option>
-                                    <option value="cu_zj">浙江联通</option>
-                                    <option value="cu_ah">安徽联通</option>
-                                    <option value="cu_fj">福建联通</option>
-                                    <option value="cu_jx">江西联通</option>
-                                    <option value="cu_sd">山东联通</option>
-                                    <option value="cu_ha">河南联通</option>
-                                    <option value="cu_hb">湖北联通</option>
-                                    <option value="cu_hn">湖南联通</option>
-                                    <option value="cu_gd">广东联通</option>
-                                    <option value="cu_gx">广西联通</option>
-                                    <option value="cu_hi">海南联通</option>
-                                    <option value="cu_cq">重庆联通</option>
-                                    <option value="cu_sc">四川联通</option>
-                                    <option value="cu_gz">贵州联通</option>
-                                    <option value="cu_yn">云南联通</option>
-                                    <option value="cu_xz">西藏联通</option>
-                                    <option value="cu_sn">陕西联通</option>
-                                    <option value="cu_gs">甘肃联通</option>
-                                    <option value="cu_qh">青海联通</option>
-                                    <option value="cu_nx">宁夏联通</option>
-                                    <option value="cu_xj">新疆联通</option>
-                                    <option value="cu_tw">台湾 (CU)</option>
-                                    <option value="cu_xg">香港 (CU)</option>
-                                    <option value="cu_am">澳门 (CU)</option>
-                                </optgroup>
-                                
-                                <optgroup label="中国移动 (CM)">
-                                    <option value="cm">全网移动 (默认)</option>
-                                    <option value="cm_bj">北京移动</option>
-                                    <option value="cm_tj">天津移动</option>
-                                    <option value="cm_he">河北移动</option>
-                                    <option value="cm_sx">山西移动</option>
-                                    <option value="cm_nm">内蒙古移动</option>
-                                    <option value="cm_ln">辽宁移动</option>
-                                    <option value="cm_jl">吉林移动</option>
-                                    <option value="cm_hl">黑龙江移动</option>
-                                    <option value="cm_sh">上海移动</option>
-                                    <option value="cm_js">江苏移动</option>
-                                    <option value="cm_zj">浙江移动</option>
-                                    <option value="cm_ah">安徽移动</option>
-                                    <option value="cm_fj">福建移动</option>
-                                    <option value="cm_jx">江西移动</option>
-                                    <option value="cm_sd">山东移动</option>
-                                    <option value="cm_ha">河南移动</option>
-                                    <option value="cm_hb">湖北移动</option>
-                                    <option value="cm_hn">湖南移动</option>
-                                    <option value="cm_gd">广东移动</option>
-                                    <option value="cm_gx">广西移动</option>
-                                    <option value="cm_hi">海南移动</option>
-                                    <option value="cm_cq">重庆移动</option>
-                                    <option value="cm_sc">四川移动</option>
-                                    <option value="cm_gz">贵州移动</option>
-                                    <option value="cm_yn">云南移动</option>
-                                    <option value="cm_xz">西藏移动</option>
-                                    <option value="cm_sn">陕西移动</option>
-                                    <option value="cm_gs">甘肃移动</option>
-                                    <option value="cm_qh">青海移动</option>
-                                    <option value="cm_nx">宁夏移动</option>
-                                    <option value="cm_xj">新疆移动</option>
-                                    <option value="cm_tw">台湾 (CM)</option>
-                                    <option value="cm_xg">香港 (CM)</option>
-                                    <option value="cm_am">澳门 (CM)</option>
-                                </optgroup>
-                            </select>
+                            <label for="select-isp">瑙ｆ瀽绾胯矾</label>
+                            <div class="custom-cascader" id="cascader-wrapper-select-isp" onclick="toggleCascader('select-isp')">
+                                <div class="cascader-display form-control" id="cascader-display-select-isp">默认 (Default)</div>
+                                <input type="hidden" id="select-isp" value="def">
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="input-value">记录值 (IP 或 目标域名)</label>
-                        <input type="text" id="input-value" placeholder="例如: 1.1.1.1" required class="form-control font-mono">
+                        <label for="input-value">璁板綍鍊?(IP 鎴?鐩爣鍩熷悕)</label>
+                        <input type="text" id="input-value" placeholder="渚嬪: 1.1.1.1" required class="form-control font-mono">
                     </div>
                     <div class="form-group">
-                        <label for="input-ttl">TTL (秒)</label>
+                        <label for="input-ttl">TTL (绉?</label>
                         <input type="number" id="input-ttl" value="60" required class="form-control font-mono">
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
-                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">鍙栨秷</button>
+                        <button type="submit" class="btn btn-primary">淇濆瓨</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- 修改密码模态弹窗 -->
+    <!-- 淇敼瀵嗙爜妯℃€佸脊绐?-->
     <div class="modal-overlay" id="password-modal">
         <div class="modal">
             <div class="modal-header">
-                <h3>修改登录密码</h3>
-                <button class="modal-close" onclick="closePasswordModal()">×</button>
+                <h3>淇敼鐧诲綍瀵嗙爜</h3>
+                <button class="modal-close" onclick="closePasswordModal()">脳</button>
             </div>
             <div class="modal-body">
                 <form id="password-form" onsubmit="handlePasswordSubmit(event)">
                     <div class="form-group">
-                        <label for="password-old">当前密码</label>
+                        <label for="password-old">褰撳墠瀵嗙爜</label>
                         <input type="password" id="password-old" required class="form-control" autocomplete="current-password">
                     </div>
                     <div class="form-group">
-                        <label for="password-new-username">新用户名</label>
+                        <label for="password-new-username">鏂扮敤鎴峰悕</label>
                         <input type="text" id="password-new-username" value="admin" required class="form-control">
                     </div>
                     <div class="form-group">
-                        <label for="password-new">新密码</label>
+                        <label for="password-new">鏂板瘑鐮?/label>
                         <input type="password" id="password-new" required class="form-control" autocomplete="new-password">
                     </div>
                     <div class="form-group">
-                        <label for="password-confirm">确认新密码</label>
+                        <label for="password-confirm">纭鏂板瘑鐮?/label>
                         <input type="password" id="password-confirm" required class="form-control" autocomplete="new-password">
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">取消</button>
-                        <button type="submit" class="btn btn-primary">保存修改</button>
+                        <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">鍙栨秷</button>
+                        <button type="submit" class="btn btn-primary">淇濆瓨淇敼</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- 生成 DDNS Token 模态弹窗 -->
+    <!-- 鐢熸垚 DDNS Token 妯℃€佸脊绐?-->
     <div class="modal-overlay" id="ddns-modal">
         <div class="modal">
             <div class="modal-header">
-                <h3>生成 DDNS Token</h3>
-                <button class="modal-close" onclick="closeDdnsModal()">×</button>
+                <h3>鐢熸垚 DDNS Token</h3>
+                <button class="modal-close" onclick="closeDdnsModal()">脳</button>
             </div>
             <div class="modal-body">
                 <form id="ddns-form" onsubmit="saveDdnsToken(event)">
                     <div class="form-group">
-                        <label for="ddns-input-fqdn">完整主机域名 (FQDN)</label>
-                        <input type="text" id="ddns-input-fqdn" placeholder="例如: fqdn.example.com" required class="form-control font-mono">
-                        <small style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; display: block;">必须是在解析列表中已添加的二级子域名记录</small>
+                        <label for="ddns-input-fqdn">瀹屾暣涓绘満鍩熷悕 (FQDN)</label>
+                        <input type="text" id="ddns-input-fqdn" placeholder="渚嬪: fqdn.example.com" required class="form-control font-mono">
+                        <small style="color: var(--text-muted); font-size: 0.8rem; margin-top: 4px; display: block;">蹇呴』鏄湪瑙ｆ瀽鍒楄〃涓凡娣诲姞鐨勪簩绾у瓙鍩熷悕璁板綍</small>
                     </div>
                     <div class="form-group">
-                        <label for="ddns-select-isp">解析线路</label>
-                        <select id="ddns-select-isp" class="form-control">
-                            <option value="def">默认 (Default)</option>
-                            <option value="ct">中国电信 (CT)</option>
-                            <option value="cu">中国联通 (CU)</option>
-                            <option value="cm">中国移动 (CM)</option>
-                        </select>
+                        <label for="ddns-select-isp">瑙ｆ瀽绾胯矾</label>
+                        <div class="custom-cascader" id="cascader-wrapper-ddns-select-isp" onclick="toggleCascader('ddns-select-isp')">
+                                <div class="cascader-display form-control" id="cascader-display-ddns-select-isp">默认 (Default)</div>
+                                <input type="hidden" id="ddns-select-isp" value="def">
+                            </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="closeDdnsModal()">取消</button>
-                        <button type="submit" class="btn btn-primary">生成</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeDdnsModal()">鍙栨秷</button>
+                        <button type="submit" class="btn btn-primary">鐢熸垚</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- 钱包充值 Modal 弹窗 -->
+    <!-- 閽卞寘鍏呭€?Modal 寮圭獥 -->
     <div class="modal-overlay" id="recharge-modal">
         <div class="modal" style="max-width: 480px;">
             <div class="modal-header">
-                <h3>钱包充值</h3>
-                <button class="modal-close" onclick="closeRechargeModal()">×</button>
+                <h3>閽卞寘鍏呭€?/h3>
+                <button class="modal-close" onclick="closeRechargeModal()">脳</button>
             </div>
             <div class="modal-body">
                 <form id="recharge-form" onsubmit="submitRecharge(event)">
                     <div class="form-group">
-                        <label for="recharge-amount">充值金额 (CNY)</label>
+                        <label for="recharge-amount">鍏呭€奸噾棰?(CNY)</label>
                         <div style="display: flex; align-items: center; gap: 8px;">
                             <input type="number" id="recharge-amount" class="form-control" value="100.00" min="10" step="0.01" required style="font-size: 1.1rem; font-weight: 600;">
                             <span style="font-weight: 600; color: var(--text-muted);">CNY</span>
                         </div>
                         <small style="color: var(--text-muted); font-size: 0.85rem; margin-top: 6px; display: block;">
-                            <strong>最小充值金额: 10 元</strong>
+                            <strong>鏈€灏忓厖鍊奸噾棰? 10 鍏?/strong>
                         </small>
                     </div>
 
                     <div class="form-group" style="margin-top: 16px;">
-                        <label>请选择支付通道</label>
+                        <label>璇烽€夋嫨鏀粯閫氶亾</label>
                         <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.02);">
                                 <input type="radio" name="recharge-method" value="epay-all" checked>
-                                <span>💳 易支付聚合收银台</span>
+                                <span>馃挸 鏄撴敮浠樿仛鍚堟敹閾跺彴</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.02);">
                                 <input type="radio" name="recharge-method" value="epay-alipay">
-                                <span>💙 支付宝</span>
+                                <span>馃挋 鏀粯瀹?/span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.02);">
                                 <input type="radio" name="recharge-method" value="epay-wxpay">
-                                <span>💚 微信支付</span>
+                                <span>馃挌 寰俊鏀粯</span>
                             </label>
                             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(255,255,255,0.02);">
                                 <input type="radio" name="recharge-method" value="usdt">
-                                <span>🟢 USDT-TRC20 链上对账</span>
+                                <span>馃煝 USDT-TRC20 閾句笂瀵硅处</span>
                             </label>
                         </div>
                     </div>
 
                     <div class="modal-footer" style="margin-top: 20px;">
-                        <button type="button" class="btn btn-secondary" onclick="closeRechargeModal()">取消</button>
-                        <button type="submit" class="btn btn-primary" style="padding: 8px 24px;">充 值</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeRechargeModal()">鍙栨秷</button>
+                        <button type="submit" class="btn btn-primary" style="padding: 8px 24px;">鍏?鍊?/button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- 管理员编辑/创建用户 Modal 弹窗 -->
+    <!-- 绠＄悊鍛樼紪杈?鍒涘缓鐢ㄦ埛 Modal 寮圭獥 -->
     <div class="modal-overlay" id="admin-user-modal">
         <div class="modal" style="max-width: 520px;">
             <div class="modal-header">
-                <h3 id="admin-user-modal-title">编辑用户</h3>
-                <button class="modal-close" onclick="closeAdminUserModal()">×</button>
+                <h3 id="admin-user-modal-title">缂栬緫鐢ㄦ埛</h3>
+                <button class="modal-close" onclick="closeAdminUserModal()">脳</button>
             </div>
             <div class="modal-body">
                 <form id="admin-user-form" onsubmit="saveAdminUser(event)">
                     <input type="hidden" id="admin-user-id">
                     
                     <div class="form-group">
-                        <label for="admin-user-name">用户名</label>
+                        <label for="admin-user-name">鐢ㄦ埛鍚?/label>
                         <input type="text" id="admin-user-name" class="form-control" required>
                     </div>
 
                     <div class="form-group">
-                        <label for="admin-user-role">用户角色</label>
+                        <label for="admin-user-role">鐢ㄦ埛瑙掕壊</label>
                         <select id="admin-user-role" class="form-control">
-                            <option value="user">普通用户 (user)</option>
-                            <option value="admin">系统管理员 (admin)</option>
+                            <option value="user">鏅€氱敤鎴?(user)</option>
+                            <option value="admin">绯荤粺绠＄悊鍛?(admin)</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label for="admin-user-plan">绑定套餐</label>
+                        <label for="admin-user-plan">缁戝畾濂楅</label>
                         <select id="admin-user-plan" class="form-control">
-                            <option value="free">免费版 (free)</option>
-                            <option value="junior">初级套餐 (junior)</option>
-                            <option value="intermediate">中级套餐 (intermediate)</option>
-                            <option value="senior">高级套餐 (senior)</option>
+                            <option value="free">鍏嶈垂鐗?(free)</option>
+                            <option value="junior">鍒濈骇濂楅 (junior)</option>
+                            <option value="intermediate">涓骇濂楅 (intermediate)</option>
+                            <option value="senior">楂樼骇濂楅 (senior)</option>
                         </select>
                     </div>
 
                     <div class="form-group" id="admin-user-balance-group">
-                        <label for="admin-user-add-balance">余额变更 (填正数为增加余额，负数为扣减)</label>
+                        <label for="admin-user-add-balance">浣欓鍙樻洿 (濉鏁颁负澧炲姞浣欓锛岃礋鏁颁负鎵ｅ噺)</label>
                         <input type="number" id="admin-user-add-balance" class="form-control" placeholder="0.00" step="0.01" value="0.00">
                     </div>
 
                     <div class="form-group" id="admin-user-expire-group">
-                        <label for="admin-user-expire-select">套餐到期调整</label>
+                        <label for="admin-user-expire-select">濂楅鍒版湡璋冩暣</label>
                         <select id="admin-user-expire-select" class="form-control">
-                            <option value="keep">保持现有到期时间</option>
-                            <option value="0">设为无限期 (0)</option>
-                            <option value="+30d">当前基础上延期 30 天</option>
-                            <option value="+365d">当前基础上延期 365 天</option>
+                            <option value="keep">淇濇寔鐜版湁鍒版湡鏃堕棿</option>
+                            <option value="0">璁句负鏃犻檺鏈?(0)</option>
+                            <option value="+30d">褰撳墠鍩虹涓婂欢鏈?30 澶?/option>
+                            <option value="+365d">褰撳墠鍩虹涓婂欢鏈?365 澶?/option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label for="admin-user-pass">密码 (若不修改请留空)</label>
-                        <input type="password" id="admin-user-pass" class="form-control" placeholder="输入新密码">
+                        <label for="admin-user-pass">瀵嗙爜 (鑻ヤ笉淇敼璇风暀绌?</label>
+                        <input type="password" id="admin-user-pass" class="form-control" placeholder="杈撳叆鏂板瘑鐮?>
                     </div>
 
                     <div class="modal-footer" style="margin-top: 20px;">
-                        <button type="button" class="btn btn-secondary" onclick="closeAdminUserModal()">取消</button>
-                        <button type="submit" class="btn btn-primary">保存设置</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeAdminUserModal()">鍙栨秷</button>
+                        <button type="submit" class="btn btn-primary">淇濆瓨璁剧疆</button>
                     </div>
                 </form>
             </div>
@@ -1366,3 +1236,4 @@ fi</code>
     </script>
 </body>
 </html>
+

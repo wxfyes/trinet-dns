@@ -1,134 +1,132 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TriNet DNS - 三网智能解析控制台</title>
+    <title>TriNet DNS - 涓夌綉鏅鸿兘瑙ｆ瀽鎺у埗鍙?/title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 登录遮罩层 -->
+    <!-- 鐧诲綍閬僵灞?-->
     <div id="login-overlay" class="login-overlay">
         <div class="login-box">
-            <span class="login-logo">🦅</span>
+            <span class="login-logo">馃</span>
             <h2>TriNet DNS</h2>
-            <p>三网智能解析控制台</p>
+            <p>涓夌綉鏅鸿兘瑙ｆ瀽鎺у埗鍙?/p>
             <form id="login-form" onsubmit="handleLoginSubmit(event)">
                 <div class="form-group">
-                    <label for="login-username">用户名</label>
+                    <label for="login-username">鐢ㄦ埛鍚?/label>
                     <input type="text" id="login-username" required class="form-control" autocomplete="username">
                 </div>
                 <div class="form-group">
-                    <label for="login-password">密码</label>
+                    <label for="login-password">瀵嗙爜</label>
                     <input type="password" id="login-password" required class="form-control" autocomplete="current-password">
                 </div>
-                <button type="submit" class="btn btn-primary">登 录</button>
+                <button type="submit" class="btn btn-primary">鐧?褰?/button>
             </form>
         </div>
     </div>
 
     <div class="app-container" id="app-container" style="display: none;">
-        <!-- 移动端侧边栏遮罩层 -->
+        <!-- 绉诲姩绔晶杈规爮閬僵灞?-->
         <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar(false)"></div>
-        <!-- 侧边导航栏 -->
+        <!-- 渚ц竟瀵艰埅鏍?-->
         <aside class="sidebar">
             <div class="brand">
-                <span class="logo-icon">🦅</span>
+                <span class="logo-icon">馃</span>
                 <span class="logo-text">TriNet DNS</span>
             </div>
             <nav class="menu">
                 <a href="#dashboard" class="menu-item active" onclick="switchTab('dashboard')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                    控制台
-                </a>
+                    鎺у埗鍙?                </a>
                 <a href="#records" class="menu-item" onclick="switchTab('records')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>
-                    解析记录
+                    瑙ｆ瀽璁板綍
                 </a>
                 <a href="#ddns" class="menu-item" onclick="switchTab('ddns')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6m12-4a9 9 0 0 1-15 6.7L3 16"></path></svg>
-                    动态 DNS
+                    鍔ㄦ€?DNS
                 </a>
                 <a href="#orders" class="menu-item" onclick="switchTab('orders')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    订单记录
+                    璁㈠崟璁板綍
                 </a>
                 <a href="#logs" class="menu-item" onclick="switchTab('logs')">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                    系统日志
+                    绯荤粺鏃ュ織
                 </a>
             </nav>
             <div class="sidebar-footer">
                 <div class="status-indicator">
                     <span class="dot active"></span>
-                    <span class="status-text">DNS 引擎已运行</span>
+                    <span class="status-text">DNS 寮曟搸宸茶繍琛?/span>
                 </div>
                 <button class="btn btn-text" style="padding: 4px 8px; margin-top: 8px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px; color: var(--text-muted);" onclick="showPasswordModal()">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin: 0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                    修改密码
+                    淇敼瀵嗙爜
                 </button>
                 <button class="btn btn-text danger" style="padding: 4px 8px; margin-top: 4px; width: 100%; text-align: left; display: flex; align-items: center; gap: 8px;" onclick="logout()">
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px; margin: 0;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
-                    退出登录
-                </button>
+                    閫€鍑虹櫥褰?                </button>
             </div>
         </aside>
 
-        <!-- 主内容区域 -->
+        <!-- 涓诲唴瀹瑰尯鍩?-->
         <main class="main-content">
-            <!-- 顶部栏 -->
+            <!-- 椤堕儴鏍?-->
             <header class="top-bar">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <button class="menu-toggle" id="menu-toggle" onclick="toggleSidebar(true)">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; margin: 0;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                     </button>
-                    <h1 id="page-title">控制台</h1>
+                    <h1 id="page-title">鎺у埗鍙?/h1>
                 </div>
                 <div class="user-profile">
-                    <span class="server-ip">本机 IP: 218.85.118.88</span>
+                    <span class="server-ip">鏈満 IP: 218.85.118.88</span>
                 </div>
             </header>
 
-            <!-- 视窗容器 -->
+            <!-- 瑙嗙獥瀹瑰櫒 -->
             <div class="content-viewport">
-                <!-- 控制台面板 -->
+                <!-- 鎺у埗鍙伴潰鏉?-->
                 <section id="tab-dashboard" class="tab-pane active">
-                    <!-- 状态卡片网格 -->
+                    <!-- 鐘舵€佸崱鐗囩綉鏍?-->
                     <div class="card-grid">
                         <div class="card">
                             <div class="card-header">
-                                <span class="card-title">今日请求总量</span>
-                                <span class="trend positive">↑ 12.3%</span>
+                                <span class="card-title">浠婃棩璇锋眰鎬婚噺</span>
+                                <span class="trend positive">鈫?12.3%</span>
                             </div>
                             <div class="card-value">1,248,392</div>
-                            <div class="card-desc">平均解析响应: 1.2 ms</div>
+                            <div class="card-desc">骞冲潎瑙ｆ瀽鍝嶅簲: 1.2 ms</div>
                         </div>
                         <div class="card">
                             <div class="card-header">
-                                <span class="card-title">当前解析域名</span>
+                                <span class="card-title">褰撳墠瑙ｆ瀽鍩熷悕</span>
                             </div>
                             <div class="card-value">14</div>
-                            <div class="card-desc">活动三网线路: 42 条</div>
+                            <div class="card-desc">娲诲姩涓夌綉绾胯矾: 42 鏉?/div>
                         </div>
                         <div class="card">
                             <div class="card-header">
-                                <span class="card-title">系统运行时间</span>
+                                <span class="card-title">绯荤粺杩愯鏃堕棿</span>
                             </div>
-                            <div class="card-value">12天 4小时</div>
-                            <div class="card-desc">CPU 占用: 0.8% | 内存: 24MB</div>
+                            <div class="card-value">12澶?4灏忔椂</div>
+                            <div class="card-desc">CPU 鍗犵敤: 0.8% | 鍐呭瓨: 24MB</div>
                         </div>
                     </div>
 
-                    <!-- 三网流量看板 -->
+                    <!-- 涓夌綉娴侀噺鐪嬫澘 -->
                     <div class="section-container">
-                        <h2 class="section-title">三网解析流量分布</h2>
+                        <h2 class="section-title">涓夌綉瑙ｆ瀽娴侀噺鍒嗗竷</h2>
                         <div class="traffic-bars">
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
-                                    <span class="isp-badge ct">中国电信 (China Telecom)</span>
+                                    <span class="isp-badge ct">涓浗鐢典俊 (China Telecom)</span>
                                     <span class="bar-value">542,001 (43.4%)</span>
                                 </div>
                                 <div class="progress-track">
@@ -137,7 +135,7 @@
                             </div>
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
-                                    <span class="isp-badge cu">中国联通 (China Unicom)</span>
+                                    <span class="isp-badge cu">涓浗鑱旈€?(China Unicom)</span>
                                     <span class="bar-value">389,208 (31.2%)</span>
                                 </div>
                                 <div class="progress-track">
@@ -146,7 +144,7 @@
                             </div>
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
-                                    <span class="isp-badge cm">中国移动 (China Mobile)</span>
+                                    <span class="isp-badge cm">涓浗绉诲姩 (China Mobile)</span>
                                     <span class="bar-value">280,183 (22.4%)</span>
                                 </div>
                                 <div class="progress-track">
@@ -155,7 +153,7 @@
                             </div>
                             <div class="traffic-bar-item">
                                 <div class="bar-info">
-                                    <span class="isp-badge def">其他线路 (Default/Others)</span>
+                                    <span class="isp-badge def">鍏朵粬绾胯矾 (Default/Others)</span>
                                     <span class="bar-value">37,000 (3.0%)</span>
                                 </div>
                                 <div class="progress-track">
@@ -166,79 +164,79 @@
                     </div>
                 </section>
 
-                <!-- 解析记录面板 -->
+                <!-- 瑙ｆ瀽璁板綍闈㈡澘 -->
                 <section id="tab-records" class="tab-pane">
                     <div class="table-actions">
-                        <button class="btn btn-primary" onclick="showAddModal()">+ 添加域名解析</button>
+                        <button class="btn btn-primary" onclick="showAddModal()">+ 娣诲姞鍩熷悕瑙ｆ瀽</button>
                         <div class="search-wrapper">
-                            <input type="text" placeholder="搜索域名或 IP..." class="input-search" id="record-search">
+                            <input type="text" placeholder="鎼滅储鍩熷悕鎴?IP..." class="input-search" id="record-search">
                         </div>
                     </div>
                     <div class="table-container">
                         <table class="data-table">
                             <thead>
                                 <tr>
-                                    <th>主机记录</th>
-                                    <th>域名</th>
-                                    <th>类型</th>
-                                    <th>线路</th>
-                                    <th>记录值 (IP / 目标)</th>
+                                    <th>涓绘満璁板綍</th>
+                                    <th>鍩熷悕</th>
+                                    <th>绫诲瀷</th>
+                                    <th>绾胯矾</th>
+                                    <th>璁板綍鍊?(IP / 鐩爣)</th>
                                     <th>TTL</th>
-                                    <th>操作</th>
+                                    <th>鎿嶄綔</th>
                                 </tr>
                             </thead>
                             <tbody id="records-list">
-                                <!-- 记录行 1 (电信) -->
+                                <!-- 璁板綍琛?1 (鐢典俊) -->
                                 <tr class="record-group-start">
                                     <td rowspan="4" class="bold font-mono">www</td>
                                     <td rowspan="4" class="font-mono">example.com</td>
                                     <td rowspan="4"><span class="badge badge-type">A</span></td>
-                                    <td><span class="isp-dot ct"></span>电信 (CT)</td>
+                                    <td><span class="isp-dot ct"></span>鐢典俊 (CT)</td>
                                     <td class="font-mono">1.1.1.1</td>
                                     <td class="font-mono">60</td>
                                     <td>
-                                        <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'ct', '1.1.1.1')">编辑</button>
+                                        <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'ct', '1.1.1.1')">缂栬緫</button>
                                     </td>
                                 </tr>
-                                <!-- 记录行 1 (联通) -->
+                                <!-- 璁板綍琛?1 (鑱旈€? -->
                                 <tr>
-                                    <td><span class="isp-dot cu"></span>联通 (CU)</td>
+                                    <td><span class="isp-dot cu"></span>鑱旈€?(CU)</td>
                                     <td class="font-mono">2.2.2.2</td>
                                     <td class="font-mono">60</td>
                                     <td>
-                                        <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'cu', '2.2.2.2')">编辑</button>
+                                        <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'cu', '2.2.2.2')">缂栬緫</button>
                                     </td>
                                 </tr>
-                                <!-- 记录行 1 (移动) -->
+                                <!-- 璁板綍琛?1 (绉诲姩) -->
                                 <tr>
-                                    <td><span class="isp-dot cm"></span>移动 (CM)</td>
+                                    <td><span class="isp-dot cm"></span>绉诲姩 (CM)</td>
                                     <td class="font-mono">3.3.3.3</td>
                                     <td class="font-mono">60</td>
                                     <td>
-                                        <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'cm', '3.3.3.3')">编辑</button>
+                                        <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'cm', '3.3.3.3')">缂栬緫</button>
                                     </td>
                                 </tr>
-                                <!-- 记录行 1 (默认) -->
+                                <!-- 璁板綍琛?1 (榛樿) -->
                                 <tr class="record-group-end">
-                                    <td><span class="isp-dot def"></span>默认 (DEF)</td>
+                                    <td><span class="isp-dot def"></span>榛樿 (DEF)</td>
                                     <td class="font-mono">4.4.4.4</td>
                                     <td class="font-mono">60</td>
                                     <td>
-                                        <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'def', '4.4.4.4')">编辑</button>
+                                        <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'def', '4.4.4.4')">缂栬緫</button>
                                     </td>
                                 </tr>
 
-                                <!-- 记录行 2 (单线路 AAAA) -->
+                                <!-- 璁板綍琛?2 (鍗曠嚎璺?AAAA) -->
                                 <tr>
                                     <td class="bold font-mono">ipv6</td>
                                     <td class="font-mono">example.com</td>
                                     <td><span class="badge badge-type">AAAA</span></td>
-                                    <td><span class="isp-dot def"></span>默认 (DEF)</td>
+                                    <td><span class="isp-dot def"></span>榛樿 (DEF)</td>
                                     <td class="font-mono">240e:c2:2000::1</td>
                                     <td class="font-mono">600</td>
                                     <td>
-                                        <button class="btn btn-text" onclick="editRecord('ipv6', 'example.com', 'def', '240e:c2:2000::1')">编辑</button>
-                                        <button class="btn btn-text danger">删除</button>
+                                        <button class="btn btn-text" onclick="editRecord('ipv6', 'example.com', 'def', '240e:c2:2000::1')">缂栬緫</button>
+                                        <button class="btn btn-text danger">鍒犻櫎</button>
                                     </td>
                                 </tr>
                             </tbody>
@@ -246,85 +244,85 @@
                     </div>
                 </section>
 
-                <!-- 动态 DNS 面板 -->
+                <!-- 鍔ㄦ€?DNS 闈㈡澘 -->
                 <section id="tab-ddns" class="tab-pane">
                     <div class="section-container">
                         <div class="ddns-header">
-                            <h2>DDNS 客户端配置与密钥</h2>
-                            <button class="btn btn-primary" onclick="generateToken()">+ 生成新 Token</button>
+                            <h2>DDNS 瀹㈡埛绔厤缃笌瀵嗛挜</h2>
+                            <button class="btn btn-primary" onclick="generateToken()">+ 鐢熸垚鏂?Token</button>
                         </div>
-                        <p class="section-desc">您可以使用本系统的 DDNS API 接口，通过客户端（如 RouterOS、OpenWrt 或 curl 脚本）实时上报动态 IP，系统会自动更新对应线路的记录值。</p>
+                        <p class="section-desc">鎮ㄥ彲浠ヤ娇鐢ㄦ湰绯荤粺鐨?DDNS API 鎺ュ彛锛岄€氳繃瀹㈡埛绔紙濡?RouterOS銆丱penWrt 鎴?curl 鑴氭湰锛夊疄鏃朵笂鎶ュ姩鎬?IP锛岀郴缁熶細鑷姩鏇存柊瀵瑰簲绾胯矾鐨勮褰曞€笺€?/p>
                         
                         <div class="table-container margin-top">
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>主机/域名</th>
-                                        <th>对应线路</th>
+                                        <th>涓绘満/鍩熷悕</th>
+                                        <th>瀵瑰簲绾胯矾</th>
                                         <th>Token</th>
-                                        <th>最后更新时间</th>
-                                        <th>操作</th>
+                                        <th>鏈€鍚庢洿鏂版椂闂?/th>
+                                        <th>鎿嶄綔</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
                                         <td class="font-mono">www.example.com</td>
-                                        <td><span class="isp-dot ct"></span>电信 (CT)</td>
+                                        <td><span class="isp-dot ct"></span>鐢典俊 (CT)</td>
                                         <td class="font-mono">ddns_tok_8f3a921d...</td>
                                         <td>2026-07-20 00:42:15</td>
                                         <td>
-                                            <button class="btn btn-text">重置</button>
-                                            <button class="btn btn-text danger">禁用</button>
+                                            <button class="btn btn-text">閲嶇疆</button>
+                                            <button class="btn btn-text danger">绂佺敤</button>
                                         </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </div>
 
-                        <h3 class="margin-top">客户端更新示例 (Shell Curl)</h3>
+                        <h3 class="margin-top">瀹㈡埛绔洿鏂扮ず渚?(Shell Curl)</h3>
                         <div class="code-block">
-                            <code>curl -X POST "http://[本机IP]/api/ddns/update" \
+                            <code>curl -X POST "http://[鏈満IP]/api/ddns/update" \
   -H "Authorization: Bearer ddns_tok_8f3a921d..." \
   -d "ip=218.85.118.88"</code>
                         </div>
                     </div>
                 </section>
 
-                <!-- 订单记录面板 -->
+                <!-- 璁㈠崟璁板綍闈㈡澘 -->
                 <section id="tab-orders" class="tab-pane">
                     <div class="section-container">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
                             <div>
-                                <h2 style="margin: 0; font-size: 1.5rem;">订单与支付记录</h2>
-                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">查看您在本系统的所有充值与套餐购买订单及其实时支付状态。</p>
+                                <h2 style="margin: 0; font-size: 1.5rem;">璁㈠崟涓庢敮浠樿褰?/h2>
+                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 0.9rem;">鏌ョ湅鎮ㄥ湪鏈郴缁熺殑鎵€鏈夊厖鍊间笌濂楅璐拱璁㈠崟鍙婂叾瀹炴椂鏀粯鐘舵€併€?/p>
                             </div>
-                            <button class="btn btn-secondary" onclick="loadOrdersTable()">刷新订单</button>
+                            <button class="btn btn-secondary" onclick="loadOrdersTable()">鍒锋柊璁㈠崟</button>
                         </div>
                         <div class="table-container card">
                             <table class="data-table">
                                 <thead>
                                     <tr>
-                                        <th>订单号</th>
-                                        <th>用户名</th>
-                                        <th>套餐</th>
-                                        <th>周期</th>
-                                        <th>价格</th>
-                                        <th>支付方式</th>
-                                        <th>状态</th>
-                                        <th>交易 ID / TxID</th>
-                                        <th>创建时间</th>
+                                        <th>璁㈠崟鍙?/th>
+                                        <th>鐢ㄦ埛鍚?/th>
+                                        <th>濂楅</th>
+                                        <th>鍛ㄦ湡</th>
+                                        <th>浠锋牸</th>
+                                        <th>鏀粯鏂瑰紡</th>
+                                        <th>鐘舵€?/th>
+                                        <th>浜ゆ槗 ID / TxID</th>
+                                        <th>鍒涘缓鏃堕棿</th>
                                     </tr>
                                 </thead>
                                 <tbody id="orders-table-body">
-                                    <!-- 模拟订单数据展示 -->
+                                    <!-- 妯℃嫙璁㈠崟鏁版嵁灞曠ず -->
                                     <tr>
                                         <td class="font-mono" style="font-weight: 500;">order_20260720_001</td>
                                         <td>admin</td>
-                                        <td><span class="badge badge-type">专业版</span></td>
-                                        <td>包月</td>
-                                        <td class="font-mono">15.00 元</td>
-                                        <td>易支付</td>
-                                        <td><span class="badge" style="background: #d1fae5; color: #059669;">已支付</span></td>
+                                        <td><span class="badge badge-type">涓撲笟鐗?/span></td>
+                                        <td>鍖呮湀</td>
+                                        <td class="font-mono">15.00 鍏?/td>
+                                        <td>鏄撴敮浠?/td>
+                                        <td><span class="badge" style="background: #d1fae5; color: #059669;">宸叉敮浠?/span></td>
                                         <td class="font-mono" style="font-size: 0.8rem;">2026072018491290</td>
                                         <td class="font-mono">2026-07-20 18:49:12</td>
                                     </tr>
@@ -334,19 +332,19 @@
                     </div>
                 </section>
 
-                <!-- 系统日志面板 -->
+                <!-- 绯荤粺鏃ュ織闈㈡澘 -->
                 <section id="tab-logs" class="tab-pane">
                     <div class="section-container">
                         <div class="log-actions">
-                            <h3>解析与引擎日志</h3>
-                            <button class="btn btn-secondary" onclick="clearLogs()">清除日志</button>
+                            <h3>瑙ｆ瀽涓庡紩鎿庢棩蹇?/h3>
+                            <button class="btn btn-secondary" onclick="clearLogs()">娓呴櫎鏃ュ織</button>
                         </div>
                         <div class="log-viewport" id="log-container">
-                            <div class="log-row info">[2026-07-20 00:48:01] [SYSTEM] DNS 权威服务器引擎启动成功，监听 0.0.0.0:53 (UDP/TCP)</div>
-                            <div class="log-row info">[2026-07-20 00:48:02] [SYSTEM] WEB API 服务启动成功，监听 0.0.0.0:80</div>
-                            <div class="log-row query">[2026-07-20 00:48:15] [QUERY] 来自 119.29.29.29 - 查询 www.example.com A 记录 -> 携带 ECS 218.85.118.0/24 (识别: 电信) -> 响应: 1.1.1.1</div>
-                            <div class="log-row query">[2026-07-20 00:48:22] [QUERY] 来自 223.5.5.5 - 查询 www.example.com A 记录 -> 携带 ECS 112.5.12.0/24 (识别: 移动) -> 响应: 3.3.3.3</div>
-                            <div class="log-row api">[2026-07-20 00:49:05] [DDNS] 接口调用成功 -> 终端 www.example.com (电信) IP 更新为 218.85.118.99</div>
+                            <div class="log-row info">[2026-07-20 00:48:01] [SYSTEM] DNS 鏉冨▉鏈嶅姟鍣ㄥ紩鎿庡惎鍔ㄦ垚鍔燂紝鐩戝惉 0.0.0.0:53 (UDP/TCP)</div>
+                            <div class="log-row info">[2026-07-20 00:48:02] [SYSTEM] WEB API 鏈嶅姟鍚姩鎴愬姛锛岀洃鍚?0.0.0.0:80</div>
+                            <div class="log-row query">[2026-07-20 00:48:15] [QUERY] 鏉ヨ嚜 119.29.29.29 - 鏌ヨ www.example.com A 璁板綍 -> 鎼哄甫 ECS 218.85.118.0/24 (璇嗗埆: 鐢典俊) -> 鍝嶅簲: 1.1.1.1</div>
+                            <div class="log-row query">[2026-07-20 00:48:22] [QUERY] 鏉ヨ嚜 223.5.5.5 - 鏌ヨ www.example.com A 璁板綍 -> 鎼哄甫 ECS 112.5.12.0/24 (璇嗗埆: 绉诲姩) -> 鍝嶅簲: 3.3.3.3</div>
+                            <div class="log-row api">[2026-07-20 00:49:05] [DDNS] 鎺ュ彛璋冪敤鎴愬姛 -> 缁堢 www.example.com (鐢典俊) IP 鏇存柊涓?218.85.118.99</div>
                         </div>
                     </div>
                 </section>
@@ -354,206 +352,93 @@
         </main>
     </div>
 
-    <!-- 添加/编辑记录模态弹窗 -->
+    <!-- 娣诲姞/缂栬緫璁板綍妯℃€佸脊绐?-->
     <div class="modal-overlay" id="record-modal">
         <div class="modal">
             <div class="modal-header">
-                <h3 id="modal-title">添加域名解析</h3>
-                <button class="modal-close" onclick="closeModal()">×</button>
+                <h3 id="modal-title">娣诲姞鍩熷悕瑙ｆ瀽</h3>
+                <button class="modal-close" onclick="closeModal()">脳</button>
             </div>
             <div class="modal-body">
                 <form id="record-form" onsubmit="saveRecord(event)">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="input-subdomain">主机记录</label>
-                            <input type="text" id="input-subdomain" placeholder="例如: www" required class="form-control font-mono">
+                            <label for="input-subdomain">涓绘満璁板綍</label>
+                            <input type="text" id="input-subdomain" placeholder="渚嬪: www" required class="form-control font-mono">
                         </div>
                         <div class="form-group">
-                            <label for="input-domain">域名</label>
+                            <label for="input-domain">鍩熷悕</label>
                             <input type="text" id="input-domain" value="example.com" required class="form-control font-mono">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="select-type">记录类型</label>
+                            <label for="select-type">璁板綍绫诲瀷</label>
                             <select id="select-type" class="form-control">
                                 <option value="A">A (IPv4)</option>
                                 <option value="AAAA">AAAA (IPv6)</option>
-                                <option value="CNAME">CNAME (别名)</option>
+                                <option value="CNAME">CNAME (鍒悕)</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="select-isp">解析线路</label>
-                            <select id="select-isp" class="form-control">
-                                <option value="def">默认 (Default)</option>
-                                
-                                <optgroup label="中国电信 (CT)">
-                                    <option value="ct">全网电信 (默认)</option>
-                                    <option value="ct_bj">北京电信</option>
-                                    <option value="ct_tj">天津电信</option>
-                                    <option value="ct_he">河北电信</option>
-                                    <option value="ct_sx">山西电信</option>
-                                    <option value="ct_nm">内蒙古电信</option>
-                                    <option value="ct_ln">辽宁电信</option>
-                                    <option value="ct_jl">吉林电信</option>
-                                    <option value="ct_hl">黑龙江电信</option>
-                                    <option value="ct_sh">上海电信</option>
-                                    <option value="ct_js">江苏电信</option>
-                                    <option value="ct_zj">浙江电信</option>
-                                    <option value="ct_ah">安徽电信</option>
-                                    <option value="ct_fj">福建电信</option>
-                                    <option value="ct_jx">江西电信</option>
-                                    <option value="ct_sd">山东电信</option>
-                                    <option value="ct_ha">河南电信</option>
-                                    <option value="ct_hb">湖北电信</option>
-                                    <option value="ct_hn">湖南电信</option>
-                                    <option value="ct_gd">广东电信</option>
-                                    <option value="ct_gx">广西电信</option>
-                                    <option value="ct_hi">海南电信</option>
-                                    <option value="ct_cq">重庆电信</option>
-                                    <option value="ct_sc">四川电信</option>
-                                    <option value="ct_gz">贵州电信</option>
-                                    <option value="ct_yn">云南电信</option>
-                                    <option value="ct_xz">西藏电信</option>
-                                    <option value="ct_sn">陕西电信</option>
-                                    <option value="ct_gs">甘肃电信</option>
-                                    <option value="ct_qh">青海电信</option>
-                                    <option value="ct_nx">宁夏电信</option>
-                                    <option value="ct_xj">新疆电信</option>
-                                    <option value="ct_tw">台湾 (CT)</option>
-                                    <option value="ct_xg">香港 (CT)</option>
-                                    <option value="ct_am">澳门 (CT)</option>
-                                </optgroup>
-                                
-                                <optgroup label="中国联通 (CU)">
-                                    <option value="cu">全网联通 (默认)</option>
-                                    <option value="cu_bj">北京联通</option>
-                                    <option value="cu_tj">天津联通</option>
-                                    <option value="cu_he">河北联通</option>
-                                    <option value="cu_sx">山西联通</option>
-                                    <option value="cu_nm">内蒙古联通</option>
-                                    <option value="cu_ln">辽宁联通</option>
-                                    <option value="cu_jl">吉林联通</option>
-                                    <option value="cu_hl">黑龙江联通</option>
-                                    <option value="cu_sh">上海联通</option>
-                                    <option value="cu_js">江苏联通</option>
-                                    <option value="cu_zj">浙江联通</option>
-                                    <option value="cu_ah">安徽联通</option>
-                                    <option value="cu_fj">福建联通</option>
-                                    <option value="cu_jx">江西联通</option>
-                                    <option value="cu_sd">山东联通</option>
-                                    <option value="cu_ha">河南联通</option>
-                                    <option value="cu_hb">湖北联通</option>
-                                    <option value="cu_hn">湖南联通</option>
-                                    <option value="cu_gd">广东联通</option>
-                                    <option value="cu_gx">广西联通</option>
-                                    <option value="cu_hi">海南联通</option>
-                                    <option value="cu_cq">重庆联通</option>
-                                    <option value="cu_sc">四川联通</option>
-                                    <option value="cu_gz">贵州联通</option>
-                                    <option value="cu_yn">云南联通</option>
-                                    <option value="cu_xz">西藏联通</option>
-                                    <option value="cu_sn">陕西联通</option>
-                                    <option value="cu_gs">甘肃联通</option>
-                                    <option value="cu_qh">青海联通</option>
-                                    <option value="cu_nx">宁夏联通</option>
-                                    <option value="cu_xj">新疆联通</option>
-                                    <option value="cu_tw">台湾 (CU)</option>
-                                    <option value="cu_xg">香港 (CU)</option>
-                                    <option value="cu_am">澳门 (CU)</option>
-                                </optgroup>
-                                
-                                <optgroup label="中国移动 (CM)">
-                                    <option value="cm">全网移动 (默认)</option>
-                                    <option value="cm_bj">北京移动</option>
-                                    <option value="cm_tj">天津移动</option>
-                                    <option value="cm_he">河北移动</option>
-                                    <option value="cm_sx">山西移动</option>
-                                    <option value="cm_nm">内蒙古移动</option>
-                                    <option value="cm_ln">辽宁移动</option>
-                                    <option value="cm_jl">吉林移动</option>
-                                    <option value="cm_hl">黑龙江移动</option>
-                                    <option value="cm_sh">上海移动</option>
-                                    <option value="cm_js">江苏移动</option>
-                                    <option value="cm_zj">浙江移动</option>
-                                    <option value="cm_ah">安徽移动</option>
-                                    <option value="cm_fj">福建移动</option>
-                                    <option value="cm_jx">江西移动</option>
-                                    <option value="cm_sd">山东移动</option>
-                                    <option value="cm_ha">河南移动</option>
-                                    <option value="cm_hb">湖北移动</option>
-                                    <option value="cm_hn">湖南移动</option>
-                                    <option value="cm_gd">广东移动</option>
-                                    <option value="cm_gx">广西移动</option>
-                                    <option value="cm_hi">海南移动</option>
-                                    <option value="cm_cq">重庆移动</option>
-                                    <option value="cm_sc">四川移动</option>
-                                    <option value="cm_gz">贵州移动</option>
-                                    <option value="cm_yn">云南移动</option>
-                                    <option value="cm_xz">西藏移动</option>
-                                    <option value="cm_sn">陕西移动</option>
-                                    <option value="cm_gs">甘肃移动</option>
-                                    <option value="cm_qh">青海移动</option>
-                                    <option value="cm_nx">宁夏移动</option>
-                                    <option value="cm_xj">新疆移动</option>
-                                    <option value="cm_tw">台湾 (CM)</option>
-                                    <option value="cm_xg">香港 (CM)</option>
-                                    <option value="cm_am">澳门 (CM)</option>
-                                </optgroup>
-                            </select>
+                            <label for="select-isp">瑙ｆ瀽绾胯矾</label>
+                            <div class="custom-cascader" id="cascader-wrapper-select-isp" onclick="toggleCascader('select-isp')">
+                                <div class="cascader-display form-control" id="cascader-display-select-isp">榛樿 (Default)</div>
+                                <input type="hidden" id="select-isp" value="def">
+                            </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="input-value">记录值 (IP 或 目标域名)</label>
-                        <input type="text" id="input-value" placeholder="例如: 1.1.1.1" required class="form-control font-mono">
+                        <label for="input-value">璁板綍鍊?(IP 鎴?鐩爣鍩熷悕)</label>
+                        <input type="text" id="input-value" placeholder="渚嬪: 1.1.1.1" required class="form-control font-mono">
                     </div>
                     <div class="form-group">
-                        <label for="input-ttl">TTL (秒)</label>
+                        <label for="input-ttl">TTL (绉?</label>
                         <input type="number" id="input-ttl" value="60" required class="form-control font-mono">
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="closeModal()">取消</button>
-                        <button type="submit" class="btn btn-primary">保存</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">鍙栨秷</button>
+                        <button type="submit" class="btn btn-primary">淇濆瓨</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- 修改密码模态弹窗 -->
+    <!-- 淇敼瀵嗙爜妯℃€佸脊绐?-->
     <div class="modal-overlay" id="password-modal">
         <div class="modal">
             <div class="modal-header">
-                <h3>修改登录密码</h3>
-                <button class="modal-close" onclick="closePasswordModal()">×</button>
+                <h3>淇敼鐧诲綍瀵嗙爜</h3>
+                <button class="modal-close" onclick="closePasswordModal()">脳</button>
             </div>
             <div class="modal-body">
                 <form id="password-form" onsubmit="handlePasswordSubmit(event)">
                     <div class="form-group">
-                        <label for="password-old">当前密码</label>
+                        <label for="password-old">褰撳墠瀵嗙爜</label>
                         <input type="password" id="password-old" required class="form-control" autocomplete="current-password">
                     </div>
                     <div class="form-group">
-                        <label for="password-new-username">新用户名</label>
+                        <label for="password-new-username">鏂扮敤鎴峰悕</label>
                         <input type="text" id="password-new-username" value="admin" required class="form-control">
                     </div>
                     <div class="form-group">
-                        <label for="password-new">新密码</label>
+                        <label for="password-new">鏂板瘑鐮?/label>
                         <input type="password" id="password-new" required class="form-control" autocomplete="new-password">
                     </div>
                     <div class="form-group">
-                        <label for="password-confirm">确认新密码</label>
+                        <label for="password-confirm">纭鏂板瘑鐮?/label>
                         <input type="password" id="password-confirm" required class="form-control" autocomplete="new-password">
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">取消</button>
-                        <button type="submit" class="btn btn-primary">保存修改</button>
+                        <button type="button" class="btn btn-secondary" onclick="closePasswordModal()">鍙栨秷</button>
+                        <button type="submit" class="btn btn-primary">淇濆瓨淇敼</button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <script src="app.js"></script>
+    <script src="cascader.js"></script>`n    <script src="app.js"></script>
 </body>
 </html>

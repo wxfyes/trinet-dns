@@ -1,4 +1,4 @@
-// 检查登录状态并切换界面
+﻿// 妫€鏌ョ櫥褰曠姸鎬佸苟鍒囨崲鐣岄潰
 function checkLogin() {
     const token = localStorage.getItem('trinet_token');
     const loginOverlay = document.getElementById('login-overlay');
@@ -21,47 +21,46 @@ function renderMockRecords() {
                 <td class="font-mono">www</td>
                 <td class="font-mono">example.com</td>
                 <td><span class="badge badge-type">A</span></td>
-                <td><span class="isp-dot ct"></span>电信 (CT)</td>
+                <td><span class="isp-dot ct"></span>鐢典俊 (CT)</td>
                 <td class="font-mono">1.1.1.1</td>
                 <td class="font-mono">60</td>
                 <td>
-                    <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'ct', '1.1.1.1')">编辑</button>
-                    <button class="btn btn-text danger">删除</button>
+                    <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'ct', '1.1.1.1')">缂栬緫</button>
+                    <button class="btn btn-text danger">鍒犻櫎</button>
                 </td>
             </tr>
             <tr class="record-group-end">
                 <td class="font-mono">www</td>
                 <td class="font-mono">example.com</td>
                 <td><span class="badge badge-type">A</span></td>
-                <td><span class="isp-dot cu"></span>联通 (CU)</td>
+                <td><span class="isp-dot cu"></span>鑱旈€?(CU)</td>
                 <td class="font-mono">2.2.2.2</td>
                 <td class="font-mono">60</td>
                 <td>
-                    <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'cu', '2.2.2.2')">编辑</button>
-                    <button class="btn btn-text danger">删除</button>
+                    <button class="btn btn-text" onclick="editRecord('www', 'example.com', 'cu', '2.2.2.2')">缂栬緫</button>
+                    <button class="btn btn-text danger">鍒犻櫎</button>
                 </td>
             </tr>
         `;
     }
 }
 
-// 提交登录表单
+// 鎻愪氦鐧诲綍琛ㄥ崟
 function handleLoginSubmit(event) {
     event.preventDefault();
     const username = document.getElementById('login-username').value.trim();
     const password = document.getElementById('login-password').value.trim();
 
-    // 静态演示环境：离线校验 admin / admin123
+    // 闈欐€佹紨绀虹幆澧冿細绂荤嚎鏍￠獙 admin / admin123
     if (username === 'admin' && password === 'admin123') {
         localStorage.setItem('trinet_token', 'mock_token_123456');
         checkLogin();
     } else {
-        alert('用户名或密码错误！默认账户为 admin，密码为 admin123');
+        alert('鐢ㄦ埛鍚嶆垨瀵嗙爜閿欒锛侀粯璁よ处鎴蜂负 admin锛屽瘑鐮佷负 admin123');
     }
 }
 
-// 退出登录
-function logout() {
+// 閫€鍑虹櫥褰?function logout() {
     localStorage.removeItem('trinet_token');
     checkLogin();
 }
@@ -86,17 +85,16 @@ function handlePasswordSubmit(event) {
     const confirmPassword = document.getElementById('password-confirm').value.trim();
 
     if (newPassword !== confirmPassword) {
-        alert('两次输入的新密码不一致！');
+        alert('涓ゆ杈撳叆鐨勬柊瀵嗙爜涓嶄竴鑷达紒');
         return;
     }
 
-    // 静态原型离线模拟成功
-    alert('密码修改成功！当前为静态演示环境，已更新模拟会话凭证，请重新登录。');
+    // 闈欐€佸師鍨嬬绾挎ā鎷熸垚鍔?    alert('瀵嗙爜淇敼鎴愬姛锛佸綋鍓嶄负闈欐€佹紨绀虹幆澧冿紝宸叉洿鏂版ā鎷熶細璇濆嚟璇侊紝璇烽噸鏂扮櫥褰曘€?);
     closePasswordModal();
     logout();
 }
 
-// 标签页切换逻辑
+// 鏍囩椤靛垏鎹㈤€昏緫
 function toggleSidebar(open) {
     const sidebar = document.querySelector('.sidebar');
     const overlay = document.getElementById('sidebar-overlay');
@@ -112,11 +110,9 @@ function toggleSidebar(open) {
 }
 
 function switchTab(tabId) {
-    // 自动折叠侧边栏
-    toggleSidebar(false);
+    // 鑷姩鎶樺彔渚ц竟鏍?    toggleSidebar(false);
 
-    // 1. 切换菜单激活状态
-    const menuItems = document.querySelectorAll('.menu-item');
+    // 1. 鍒囨崲鑿滃崟婵€娲荤姸鎬?    const menuItems = document.querySelectorAll('.menu-item');
     menuItems.forEach(item => {
         if (item.getAttribute('href') === `#${tabId}`) {
             item.classList.add('active');
@@ -125,8 +121,7 @@ function switchTab(tabId) {
         }
     });
 
-    // 2. 切换面板显示状态
-    const panes = document.querySelectorAll('.tab-pane');
+    // 2. 鍒囨崲闈㈡澘鏄剧ず鐘舵€?    const panes = document.querySelectorAll('.tab-pane');
     panes.forEach(pane => {
         if (pane.id === `tab-${tabId}`) {
             pane.classList.add('active');
@@ -135,33 +130,31 @@ function switchTab(tabId) {
         }
     });
 
-    // 3. 更新标题栏文本
-    const titleMap = {
-        'dashboard': '控制台',
-        'records': '解析记录',
-        'ddns': '动态 DNS 配置',
-        'orders': '订单记录',
-        'logs': '系统运行日志'
+    // 3. 鏇存柊鏍囬鏍忔枃鏈?    const titleMap = {
+        'dashboard': '鎺у埗鍙?,
+        'records': '瑙ｆ瀽璁板綍',
+        'ddns': '鍔ㄦ€?DNS 閰嶇疆',
+        'orders': '璁㈠崟璁板綍',
+        'logs': '绯荤粺杩愯鏃ュ織'
     };
-    document.getElementById('page-title').innerText = titleMap[tabId] || '控制台';
+    document.getElementById('page-title').innerText = titleMap[tabId] || '鎺у埗鍙?;
 
     if (tabId === 'orders') {
         loadOrdersTable();
     }
 }
 
-// 模态弹窗管理
-const modalOverlay = document.getElementById('record-modal');
+// 妯℃€佸脊绐楃鐞?const modalOverlay = document.getElementById('record-modal');
 const modalTitle = document.getElementById('modal-title');
 const recordForm = document.getElementById('record-form');
 
-// 页面加载入口
+// 椤甸潰鍔犺浇鍏ュ彛
 window.addEventListener('DOMContentLoaded', () => {
     checkLogin();
 });
 
 function showAddModal() {
-    modalTitle.innerText = '添加域名解析';
+    modalTitle.innerText = '娣诲姞鍩熷悕瑙ｆ瀽';
     recordForm.reset();
     document.getElementById('input-subdomain').disabled = false;
     document.getElementById('input-domain').disabled = false;
@@ -169,12 +162,11 @@ function showAddModal() {
 }
 
 function editRecord(subdomain, domain, isp, value) {
-    modalTitle.innerText = '修改域名解析';
+    modalTitle.innerText = '淇敼鍩熷悕瑙ｆ瀽';
     document.getElementById('input-subdomain').value = subdomain;
-    document.getElementById('input-subdomain').disabled = true; // 编辑时锁定子域名
+    document.getElementById('input-subdomain').disabled = true; // 缂栬緫鏃堕攣瀹氬瓙鍩熷悕
     document.getElementById('input-domain').value = domain;
-    document.getElementById('input-domain').disabled = true; // 锁定主域名
-    document.getElementById('select-isp').value = isp;
+    document.getElementById('input-domain').disabled = true; // 閿佸畾涓诲煙鍚?    document.getElementById('select-isp').value = isp; if (typeof setCascaderValue === 'function') setCascaderValue('select-isp', isp);
     document.getElementById('input-value').value = value;
     modalOverlay.classList.add('show');
 }
@@ -185,20 +177,20 @@ function closeModal() {
 
 function saveRecord(event) {
     event.preventDefault();
-    // 后续对接后端 API 时在此处提交数据
-    alert('保存成功 (当前为静态原型演示)');
+    // 鍚庣画瀵规帴鍚庣 API 鏃跺湪姝ゅ鎻愪氦鏁版嵁
+    alert('淇濆瓨鎴愬姛 (褰撳墠涓洪潤鎬佸師鍨嬫紨绀?');
     closeModal();
 }
 
 function generateToken() {
     const randomHex = Array.from({length: 16}, () => Math.floor(Math.random()*16).toString(16)).join('');
-    alert(`已生成新 Token:\nddns_tok_${randomHex}\n请妥善保管。`);
+    alert(`宸茬敓鎴愭柊 Token:\nddns_tok_${randomHex}\n璇峰Ε鍠勪繚绠°€俙);
 }
 
 function clearLogs() {
     const container = document.getElementById('log-container');
     if (container) {
-        container.innerHTML = '<div class="log-row info">[' + new Date().toLocaleString() + '] [SYSTEM] 日志缓存已清空。</div>';
+        container.innerHTML = '<div class="log-row info">[' + new Date().toLocaleString() + '] [SYSTEM] 鏃ュ織缂撳瓨宸叉竻绌恒€?/div>';
     }
 }
 
@@ -209,13 +201,14 @@ function handlePasswordSubmit(event) {
     const confirmPass = document.getElementById('password-confirm').value;
 
     if (newPass !== confirmPass) {
-        alert('两次输入的新密码不一致！');
+        alert('涓ゆ杈撳叆鐨勬柊瀵嗙爜涓嶄竴鑷达紒');
         return;
     }
-    alert('密码修改成功 (当前为静态原型演示)');
+    alert('瀵嗙爜淇敼鎴愬姛 (褰撳墠涓洪潤鎬佸師鍨嬫紨绀?');
     closePasswordModal();
 }
 
 function loadOrdersTable() {
-    console.log('订单数据加载完毕 (静态演示模式)');
+    console.log('璁㈠崟鏁版嵁鍔犺浇瀹屾瘯 (闈欐€佹紨绀烘ā寮?');
 }
+
