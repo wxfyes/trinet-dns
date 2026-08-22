@@ -1,6 +1,7 @@
 package dns
 
 import (
+	"fmt"
 	"log"
 	"net"
 	"strings"
@@ -75,14 +76,12 @@ func (d *DNSServer) handleDNSRequest(w dns.ResponseWriter, r *dns.Msg) {
 		ips, ttl := d.store.Lookup(domain, subdomain, qTypeStr, isp)
 		if len(ips) > 0 {
 			for _, ipStr := range ips {
-				hdr := dns.RR_Header{Name: q.Name, Rrtype: q.Qtype, Class: dns.ClassINET, Ttl: ttl}
-				switch q.Qtype {
-				case dns.TypeA:
-					m.Answer = append(m.Answer, &dns.A{Hdr: hdr, A: net.ParseIP(ipStr)})
-				case dns.TypeAAAA:
-					m.Answer = append(m.Answer, &dns.AAAA{Hdr: hdr, AAAA: net.ParseIP(ipStr)})
-				case dns.TypeCNAME:
-					m.Answer = append(m.Answer, &dns.CNAME{Hdr: hdr, Target: dns.Fqdn(ipStr)})
+				rrStr := fmt.Sprintf("%s %d IN %s %s", q.Name, ttl, qTypeStr, ipStr)
+				rr, err := dns.NewRR(rrStr)
+				if err == nil && rr != nil {
+					m.Answer = append(m.Answer, rr)
+				} else {
+					log.Printf("[ERROR] 无法解析记录: %s (err: %v)", rrStr, err)
 				}
 			}
 			logMsg = "[QUERY] IP: " + clientIP.String() + " (ECS: " + strings.ToUpper(isp) + ") -> 查询: " + q.Name + " " + qTypeStr + " -> 成功匹配线路: " + strings.Join(ips, ", ")
