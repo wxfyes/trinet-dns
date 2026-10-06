@@ -45,6 +45,16 @@ type DomainRecords struct {
 	Records map[string][]DNSRecord `json:"records"` // key: "Subdomain_Type"
 }
 
+// NodeStatusInfo 分布式 NS 节点心跳遥测与状态信息
+type NodeStatusInfo struct {
+	NodeID     string            `json:"node_id"`
+	IP         string            `json:"ip"`
+	LastSeen   int64             `json:"last_seen"` // unix timestamp
+	QueryCount uint64            `json:"query_count"`
+	ISPQueries map[string]uint64 `json:"isp_queries"`
+	IsOnline   bool              `json:"is_online"`
+}
+
 // MemoryStore 内存解析记录存储（支持持久化为 SQLite 数据库，并支持从旧 JSON 迁移）
 type MemoryStore struct {
 	mu          sync.RWMutex
@@ -57,6 +67,8 @@ type MemoryStore struct {
 	WebPass     string                    `json:"web_pass,omitempty"`
 	queryCount  uint64
 	ispQueryMap map[string]uint64
+	nodesMu     sync.RWMutex
+	nodesMap    map[string]*NodeStatusInfo
 }
 
 func NewMemoryStore(filePath string) *MemoryStore {
@@ -66,6 +78,7 @@ func NewMemoryStore(filePath string) *MemoryStore {
 		Tokens:      make(map[string]string),
 		TokenOwners: make(map[string]int64),
 		ispQueryMap: make(map[string]uint64),
+		nodesMap:    make(map[string]*NodeStatusInfo),
 	}
 	store.Load()
 	return store
@@ -110,6 +123,63 @@ func (s *MemoryStore) GetQueryStats() (uint64, map[string]uint64) {
 		m[k] = v
 	}
 	return s.queryCount, m
+}
+
+// RecordNodeReport 记录从节点上报的解析遥测与健康心跳
+func (s *MemoryStore) RecordNodeReport(nodeID string, clientIP string, queryCount uint64, ispQueries map[string]uint64) {
+	s.nodesMu.Lock()
+	defer s.nodesMu.Unlock()
+	if s.nodesMap == nil {
+		s.nodesMap = make(map[string]*NodeStatusInfo)
+	}
+	if nodeID == "" {
+		nodeID = clientIP
+	}
+	s.nodesMap[nodeID] = &NodeStatusInfo{
+		NodeID:     nodeID,
+		IP:         clientIP,
+		LastSeen:   time.Now().Unix(),
+		QueryCount: queryCount,
+		ISPQueries: ispQueries,
+		IsOnline:   true,
+	}
+}
+
+// GetClusterStats 获取全网集群汇总统计及各节点独立明细
+func (s *MemoryStore) GetClusterStats() (uint64, map[string]uint64, []NodeStatusInfo) {
+	s.nodesMu.RLock()
+	defer s.nodesMu.RUnlock()
+
+	now := time.Now().Unix()
+	localQueries, localISP := s.GetQueryStats()
+
+	totalQueries := localQueries
+	totalISP := make(map[string]uint64)
+	for k, v := range localISP {
+		totalISP[k] = v
+	}
+
+	var nodeList []NodeStatusInfo
+	for _, node := range s.nodesMap {
+		// 60秒内有心跳视为主机活跃在线
+		isOnline := (now - node.LastSeen) <= 60
+		info := NodeStatusInfo{
+			NodeID:     node.NodeID,
+			IP:         node.IP,
+			LastSeen:   node.LastSeen,
+			QueryCount: node.QueryCount,
+			ISPQueries: node.ISPQueries,
+			IsOnline:   isOnline,
+		}
+		nodeList = append(nodeList, info)
+
+		totalQueries += node.QueryCount
+		for isp, cnt := range node.ISPQueries {
+			totalISP[isp] += cnt
+		}
+	}
+
+	return totalQueries, totalISP, nodeList
 }
 
 // Load 初始化 SQLite 并加载数据，支持从 JSON 文件自动迁移

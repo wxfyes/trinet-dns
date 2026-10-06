@@ -914,6 +914,58 @@ async function loadSysStats() {
             updateISPBar('cm', cmPct);
             updateISPBar('def', defPct);
         }
+
+        // 4. 渲染分布式 NS 节点负载监控表格
+        const totalClusterQ = stats.query_count || 0;
+        const totalClusterEl = document.getElementById('cluster-total-queries');
+        if (totalClusterEl) {
+            totalClusterEl.textContent = `全网总解析: ${totalClusterQ.toLocaleString()} 次`;
+        }
+
+        const nodesTbody = document.getElementById('cluster-nodes-tbody');
+        if (nodesTbody && stats.nodes) {
+            if (stats.nodes.length === 0) {
+                nodesTbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 20px; color: var(--text-muted, #94a3b8);">暂无从节点汇报数据 (节点接入并处理查询后自动呈现)</td></tr>`;
+            } else {
+                const nowSec = Math.floor(Date.now() / 1000);
+                nodesTbody.innerHTML = stats.nodes.map(n => {
+                    const qCount = n.query_count || 0;
+                    const pct = totalClusterQ > 0 ? ((qCount / totalClusterQ) * 100).toFixed(1) : '0.0';
+                    const diffSec = Math.max(0, nowSec - n.last_seen);
+                    let timeAgo = `${diffSec}秒前`;
+                    if (diffSec > 60) {
+                        timeAgo = `${Math.floor(diffSec / 60)}分钟前`;
+                    }
+
+                    const statusBadge = n.is_online
+                        ? `<span style="display:inline-flex; align-items:center; gap:5px; color:#10b981; font-weight:600; font-size:12px;"><span style="width:8px; height:8px; border-radius:50%; background:#10b981;"></span>在线活跃</span>`
+                        : `<span style="display:inline-flex; align-items:center; gap:5px; color:#ef4444; font-weight:600; font-size:12px;"><span style="width:8px; height:8px; border-radius:50%; background:#ef4444;"></span>心跳超时</span>`;
+
+                    return `
+                        <tr style="border-bottom: 1px solid var(--border-color, #f1f5f9);">
+                            <td style="padding: 12px 16px; font-weight: 600; color: #1e293b;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px; height:16px; color:#6366f1;"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                                    ${n.node_id}
+                                </div>
+                            </td>
+                            <td style="padding: 12px 16px; font-family: monospace; color: #64748b; font-size: 13px;">${n.ip || '-'}</td>
+                            <td style="padding: 12px 16px;">${statusBadge}</td>
+                            <td style="padding: 12px 16px; font-family: monospace; font-weight: 700; color: #3b82f6;">${qCount.toLocaleString()} 次</td>
+                            <td style="padding: 12px 16px;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <div style="flex:1; height:6px; background:#e2e8f0; border-radius:3px; overflow:hidden; max-width:80px;">
+                                        <div style="width:${pct}%; height:100%; background:#3b82f6; border-radius:3px;"></div>
+                                    </div>
+                                    <span style="font-size:12px; font-family:monospace; color:#64748b;">${pct}%</span>
+                                </div>
+                            </td>
+                            <td style="padding: 12px 16px; color: #94a3b8; font-size: 12px;">${timeAgo}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
     } catch (err) {
         console.error('获取系统状态失败:', err);
     }

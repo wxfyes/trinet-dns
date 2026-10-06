@@ -479,7 +479,7 @@ func (ws *WebServer) handleSysStats(w http.ResponseWriter, r *http.Request) {
 
 	cpuUsage := 0.1 + (0.2 * float64(time.Now().Unix()%5))
 
-	totalQueries, ispStats := ws.store.GetQueryStats()
+	totalQueries, ispStats, nodeList := ws.store.GetClusterStats()
 
 	stats := map[string]interface{}{
 		"uptime":      uptime,
@@ -488,12 +488,13 @@ func (ws *WebServer) handleSysStats(w http.ResponseWriter, r *http.Request) {
 		"query_count": totalQueries,
 		"isp_stats":   ispStats,
 		"ns_nodes":    ws.getNSNodes(),
+		"nodes":       nodeList,
 	}
 	json.NewEncoder(w).Encode(stats)
 }
 
 func (ws *WebServer) handleSync(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+	if r.Method != http.MethodGet && r.Method != http.MethodPost {
 		http.Error(w, `{"error":"Method Not Allowed"}`, http.StatusMethodNotAllowed)
 		return
 	}
@@ -508,6 +509,22 @@ func (ws *WebServer) handleSync(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte(`{"error":"未授权的同步请求"}`))
 			return
+		}
+	}
+
+	// 若从节点通过 POST 上报了心跳与流量遥测数据，予以聚合记录
+	if r.Method == http.MethodPost {
+		var report struct {
+			NodeID     string            `json:"node_id"`
+			QueryCount uint64            `json:"query_count"`
+			ISPQueries map[string]uint64 `json:"isp_queries"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&report); err == nil {
+			clientIP := r.RemoteAddr
+			if host, _, err := net.SplitHostPort(clientIP); err == nil {
+				clientIP = host
+			}
+			ws.store.RecordNodeReport(report.NodeID, clientIP, report.QueryCount, report.ISPQueries)
 		}
 	}
 

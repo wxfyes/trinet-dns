@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"io"
@@ -34,6 +35,7 @@ func main() {
 	syncURL := flag.String("sync-url", "", "控制端 API 数据同步地址 (如 https://trinet-api.workers.dev/api/records)")
 	syncToken := flag.String("sync-token", "", "数据同步认证 Token")
 	syncInterval := flag.Duration("sync-interval", 15*time.Second, "数据同步拉取时间间隔")
+	nodeName := flag.String("node-name", "", "当前节点的标识名称 (如 ns1.cngoodok.org，默认自动获取主机名)")
 
 	flag.Parse()
 
@@ -88,7 +90,7 @@ func main() {
 
 	// 5. 启动控制后台或数据同步协程
 	if *syncMode {
-		go startSyncAgent(recordStore, *syncURL, *syncToken, *syncInterval)
+		go startSyncAgent(recordStore, *syncURL, *syncToken, *syncInterval, *nodeName)
 	} else {
 		u, p := recordStore.GetCredentials()
 		webServer := web.NewWebServer(*webAddr, recordStore, logChan, u, p, *syncToken, *nsNodes, *openReg)
@@ -105,19 +107,37 @@ func main() {
 	log.Println("[SYSTEM] TriNet DNS 安全退出。")
 }
 
-// startSyncAgent 从云端/主控拉取最新数据
-func startSyncAgent(s *store.MemoryStore, url string, token string, interval time.Duration) {
+// startSyncAgent 从云端/主控拉取最新数据，并实时上报本节点的解析请求遥测数据
+func startSyncAgent(s *store.MemoryStore, url string, token string, interval time.Duration, nodeName string) {
+	if nodeName == "" {
+		if h, err := os.Hostname(); err == nil && h != "" {
+			nodeName = h
+		} else {
+			nodeName = "agent-node"
+		}
+	}
+
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 
 	syncFunc := func() {
-		req, err := http.NewRequest("GET", url, nil)
+		// 收集本节点已处理的解析请求总数与三网分布
+		qCount, ispMap := s.GetQueryStats()
+		reportPayload := map[string]interface{}{
+			"node_id":     nodeName,
+			"query_count": qCount,
+			"isp_queries": ispMap,
+		}
+		bodyBytes, _ := json.Marshal(reportPayload)
+
+		req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
 		if err != nil {
 			log.Printf("[SYNC ERROR] 构造同步请求失败: %s", err.Error())
 			return
 		}
+		req.Header.Set("Content-Type", "application/json")
 
 		if token != "" {
 			req.Header.Set("Authorization", "Bearer "+token)
@@ -151,7 +171,7 @@ func startSyncAgent(s *store.MemoryStore, url string, token string, interval tim
 		}
 
 		s.LoadDataFromMap(remoteStore.Domains)
-		log.Printf("[SYNC] 成功同步解析记录，当前托管主域名数: %d", len(remoteStore.Domains))
+		log.Printf("[SYNC] 成功同步解析记录，当前托管主域名数: %d (上报解析量: %d)", len(remoteStore.Domains), qCount)
 	}
 
 	syncFunc()
