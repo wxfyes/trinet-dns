@@ -76,6 +76,7 @@ func main() {
 		recordStore.StartAutoRenewCron()
 		recordStore.StartCFBestIPCron()
 		recordStore.StartDatabaseBackupCron()
+		recordStore.StartHealthCheckCron()
 	}
 
 	// 3. 通用解析日志通道，用于实时日志流动

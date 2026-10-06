@@ -414,6 +414,52 @@ const recordForm = document.getElementById('record-form');
 
 let isEditMode = false;
 
+// 动态 IP 输入行管理器 (支持单运营商多 IP 分布式与故障剔除)
+function createIPRowElement(value = '') {
+    const row = document.createElement('div');
+    row.className = 'ip-input-row';
+    row.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'form-control font-mono ip-input-item';
+    input.placeholder = '例如: 45.125.12.218 或 目标域名';
+    input.value = value;
+    input.required = true;
+    input.style.flex = '1';
+
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'btn btn-text danger';
+    delBtn.title = '删除此行';
+    delBtn.style.cssText = 'padding: 4px 10px; font-size: 16px; line-height: 1; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.25); cursor: pointer;';
+    delBtn.innerHTML = '&times;';
+    delBtn.onclick = function() {
+        const container = document.getElementById('ip-inputs-container');
+        if (container && container.children.length > 1) {
+            row.remove();
+        } else {
+            input.value = '';
+            input.focus();
+        }
+    };
+
+    row.appendChild(input);
+    row.appendChild(delBtn);
+    return row;
+}
+
+function addIPRow(value = '') {
+    const container = document.getElementById('ip-inputs-container');
+    if (!container) return;
+    const row = createIPRowElement(value);
+    container.appendChild(row);
+    const input = row.querySelector('input');
+    if (input && !value) {
+        input.focus();
+    }
+}
+
 function showAddModal() {
     isEditMode = false;
     modalTitle.innerText = '添加域名解析';
@@ -422,6 +468,14 @@ function showAddModal() {
     document.getElementById('input-domain').disabled = false;
     document.getElementById('select-type').disabled = false;
     document.getElementById('cascader-wrapper-select-isp').removeAttribute('disabled');
+    
+    // 初始化 IP 输入列表为 1 个空输入框
+    const container = document.getElementById('ip-inputs-container');
+    if (container) {
+        container.innerHTML = '';
+        addIPRow('');
+    }
+    
     modalOverlay.classList.add('show');
 }
 
@@ -437,8 +491,25 @@ function editRecord(subdomain, domain, type, isp, value, ttl) {
     document.getElementById('select-isp').value = isp;
     if (typeof setCascaderValue === 'function') setCascaderValue('select-isp', isp);
     document.getElementById('cascader-wrapper-select-isp').setAttribute('disabled', 'true');
-    document.getElementById('input-value').value = value;
     document.getElementById('input-ttl').value = ttl || 60;
+
+    // 填充多行 IP 输入框
+    const container = document.getElementById('ip-inputs-container');
+    if (container) {
+        container.innerHTML = '';
+        let ips = [];
+        if (Array.isArray(value)) {
+            ips = value;
+        } else if (typeof value === 'string' && value.trim()) {
+            ips = value.split(/[,;\uff0c\uff1b\s]+/).map(s => s.trim()).filter(Boolean);
+        }
+        if (ips.length === 0) {
+            addIPRow('');
+        } else {
+            ips.forEach(ip => addIPRow(ip));
+        }
+    }
+
     modalOverlay.classList.add('show');
 }
 
@@ -522,7 +593,19 @@ function renderRecordsTable(data) {
                 // 记录值 (合并为逗号分隔字符串展示)
                 const tdVal = document.createElement('td');
                 tdVal.className = 'font-mono';
-                tdVal.textContent = rec.values ? rec.values.join(', ') : '';
+                const unhealthyMap = data.unhealthy_ips || {};
+                if (rec.values && rec.values.length > 0) {
+                    tdVal.innerHTML = rec.values.map(v => {
+                        const isDead = unhealthyMap[v];
+                        if (isDead) {
+                            return `<span style="color:#ef4444;text-decoration:line-through;font-weight:600;" title="[宕机] 节点探测超时，已自动剔除">${v}</span> <span style="font-size:11px;background:#fee2e2;color:#ef4444;padding:1px 4px;border-radius:4px;font-weight:bold;">宕机</span>`;
+                        } else {
+                            return `<span style="color:#10b981;font-weight:500;" title="[健康] 节点连通正常">${v}</span>`;
+                        }
+                    }).join(', ');
+                } else {
+                    tdVal.textContent = '';
+                }
                 tr.appendChild(tdVal);
 
                 // TTL
@@ -533,7 +616,7 @@ function renderRecordsTable(data) {
 
                 // 操作
                 const tdOps = document.createElement('td');
-                const valStr = rec.values ? rec.values[0] : '';
+                const valStr = rec.values ? rec.values.join(', ') : '';
                 
                 tdOps.innerHTML = `
                     <button class="btn btn-text" onclick="editRecord('${rec.subdomain}', '${domainName}', '${rec.type}', '${rec.isp}', '${valStr}', ${rec.ttl})">编辑</button>
@@ -680,15 +763,36 @@ async function saveRecord(event) {
     const domain = document.getElementById('input-domain').value.trim();
     const qtype = document.getElementById('select-type').value;
     const isp = document.getElementById('select-isp').value;
-    const value = document.getElementById('input-value').value.trim();
-    const ttl = parseInt(document.getElementById('input-ttl').value);
+    const ttl = parseInt(document.getElementById('input-ttl').value) || 60;
+
+    // 收集所有行中的 IP
+    const container = document.getElementById('ip-inputs-container');
+    let values = [];
+    if (container) {
+        const inputs = container.querySelectorAll('.ip-input-item');
+        inputs.forEach(input => {
+            const v = input.value.trim();
+            if (v) {
+                // 防呆：即使用户在单行中粘贴了包含逗号/空格的多个IP，也自动解析拆分
+                const parts = v.split(/[,;\uff0c\uff1b\s]+/).map(s => s.trim()).filter(Boolean);
+                if (parts.length > 0) {
+                    values.push(...parts);
+                }
+            }
+        });
+    }
+
+    if (values.length === 0) {
+        alert('请至少输入一个记录值 (IP 或 目标域名)');
+        return;
+    }
 
     const payload = {
         domain,
         subdomain: subdomain === '' ? '@' : subdomain,
         type: qtype,
         isp,
-        values: [value],
+        values: values,
         ttl
     };
 

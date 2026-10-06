@@ -674,6 +674,22 @@ func (ws *WebServer) handleRecords(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		var cleanValues []string
+		for _, v := range req.Values {
+			parts := strings.FieldsFunc(v, func(r rune) bool {
+				return r == ',' || r == ';' || r == '，' || r == '；' || r == '\n' || r == '\r' || r == ' '
+			})
+			for _, p := range parts {
+				p = strings.TrimSpace(p)
+				if p != "" {
+					cleanValues = append(cleanValues, p)
+				}
+			}
+		}
+		if len(cleanValues) > 0 {
+			req.Values = cleanValues
+		}
+
 		err := ws.store.AddRecordWithAuth(user.ID, user.Role, req.Domain, req.Subdomain, req.Type, req.ISP, req.Values, req.TTL)
 		if err != nil {
 			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusForbidden)

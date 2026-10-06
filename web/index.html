@@ -391,8 +391,17 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="input-value">记录值 (IP 或 目标域名)</label>
-                        <input type="text" id="input-value" placeholder="例如: 1.1.1.1" required class="form-control font-mono">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <label style="margin-bottom: 0;">记录值 (IP 列表 / 目标域名)</label>
+                            <button type="button" class="btn btn-text" onclick="addIPRow('')" style="color: #6366f1; font-weight: 600; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; border-radius: 4px; background: rgba(99, 102, 241, 0.08);">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 14px; height: 14px;"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                添加 IP / 记录值
+                            </button>
+                        </div>
+                        <div id="ip-inputs-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                        <div style="font-size: 12px; color: var(--text-muted, #94a3b8); margin-top: 6px;">
+                            * 一行一个 IP，单线路配置多个 IP 时将自动执行 DNS 轮询与健康检查宕机剔除
+                        </div>
                     </div>
                     <div class="form-group">
                         <label for="input-ttl">TTL (秒)</label>

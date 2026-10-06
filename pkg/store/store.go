@@ -463,8 +463,9 @@ func (s *MemoryStore) saveUnlocked() error {
 }
 
 type PublicStoreData struct {
-	Domains map[string]*DomainRecords `json:"domains"`
-	Tokens  map[string]string         `json:"tokens"`
+	Domains      map[string]*DomainRecords `json:"domains"`
+	Tokens       map[string]string         `json:"tokens"`
+	UnhealthyIPs map[string]int64          `json:"unhealthy_ips,omitempty"`
 }
 
 // GetPublicData 获取用于公网展示的脱敏数据
@@ -472,8 +473,9 @@ func (s *MemoryStore) GetPublicData() PublicStoreData {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return PublicStoreData{
-		Domains: s.Domains,
-		Tokens:  s.Tokens,
+		Domains:      s.Domains,
+		Tokens:       s.Tokens,
+		UnhealthyIPs: s.GetUnhealthyIPList(),
 	}
 }
 
@@ -482,10 +484,13 @@ func (s *MemoryStore) GetUserData(userID int64, role string) PublicStoreData {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
+	unhealthy := s.GetUnhealthyIPList()
+
 	if role == "admin" {
 		return PublicStoreData{
-			Domains: s.Domains,
-			Tokens:  s.Tokens,
+			Domains:      s.Domains,
+			Tokens:       s.Tokens,
+			UnhealthyIPs: unhealthy,
 		}
 	}
 
@@ -513,8 +518,9 @@ func (s *MemoryStore) GetUserData(userID int64, role string) PublicStoreData {
 	}
 
 	return PublicStoreData{
-		Domains: filteredDomains,
-		Tokens:  filteredTokens,
+		Domains:      filteredDomains,
+		Tokens:       filteredTokens,
+		UnhealthyIPs: unhealthy,
 	}
 }
 
@@ -580,7 +586,7 @@ func (s *MemoryStore) LoadDataFromMap(domains map[string]*DomainRecords) {
 	s.Domains = domains
 }
 
-// Lookup 检索 DNS 记录 (高性能内存读取，DNS热通道)
+// Lookup 检索 DNS 记录 (高性能内存读取，DNS热通道，带健康熔断与自动容灾)
 func (s *MemoryStore) Lookup(domain, subdomain, qType, isp string) ([]string, uint32) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -596,10 +602,26 @@ func (s *MemoryStore) Lookup(domain, subdomain, qType, isp string) ([]string, ui
 		return nil, 0
 	}
 
+	filterIPs := func(vals []string, rTTL uint32) ([]string, uint32, bool) {
+		if len(vals) == 0 {
+			return nil, 0, false
+		}
+		if qType == "A" || qType == "AAAA" {
+			healthy := s.FilterHealthyIPs(vals)
+			if len(healthy) > 0 {
+				return healthy, rTTL, true
+			}
+			return nil, 0, false // 当前线路全部不健康，通知上层降级
+		}
+		return vals, rTTL, true
+	}
+
 	// 1. 尝试精确匹配 (如 ct_gd)
 	for _, r := range records {
-		if r.ISP == isp && len(r.Values) > 0 {
-			return r.Values, r.TTL
+		if r.ISP == isp {
+			if hVals, hTTL, ok := filterIPs(r.Values, r.TTL); ok {
+				return hVals, hTTL
+			}
 		}
 	}
 
@@ -607,18 +629,24 @@ func (s *MemoryStore) Lookup(domain, subdomain, qType, isp string) ([]string, ui
 	if idx := strings.IndexByte(isp, '_'); idx > 0 {
 		baseISP := isp[:idx]
 		for _, r := range records {
-			if r.ISP == baseISP && len(r.Values) > 0 {
-				return r.Values, r.TTL
+			if r.ISP == baseISP {
+				if hVals, hTTL, ok := filterIPs(r.Values, r.TTL); ok {
+					return hVals, hTTL
+				}
 			}
 		}
 	}
 
-	// 3. 最后尝试兜底匹配默认记录 (def)
+	// 3. 尝试兜底匹配默认记录 (def)
 	for _, r := range records {
-		if r.ISP == "def" && len(r.Values) > 0 {
-			return r.Values, r.TTL
+		if r.ISP == "def" {
+			if hVals, hTTL, ok := filterIPs(r.Values, r.TTL); ok {
+				return hVals, hTTL
+			}
 		}
 	}
+
+	// 4. 全局死守保底：若所有健康过滤都未命中（极端情况下所有节点都被标记异常），返回第一条记录防止完全解析失败
 	if len(records) > 0 && len(records[0].Values) > 0 {
 		return records[0].Values, records[0].TTL
 	}
