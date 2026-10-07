@@ -253,10 +253,11 @@
                     <div class="table-actions">
                         <button class="btn btn-primary" onclick="showAddModal()">+ 添加域名解析</button>
                         <div class="search-wrapper">
-                            <input type="text" placeholder="搜索域名或 IP..." class="input-search" id="record-search">
+                            <input type="text" placeholder="搜索域名或 IP..." class="input-search" id="record-search" oninput="filterRecords(this.value)">
                         </div>
                     </div>
-                    <div class="table-container">
+                    <!-- 桌面端表格视图 -->
+                    <div class="table-container desktop-only">
                         <table class="data-table">
                             <thead>
                                 <tr>
@@ -264,7 +265,7 @@
                                     <th>域名</th>
                                     <th>类型</th>
                                     <th>线路</th>
-                                    <th>记录值 (IP / 目标)</th>
+                                    <th>记录值 (节点 IP 池)</th>
                                     <th>TTL</th>
                                     <th>操作</th>
                                 </tr>
@@ -273,6 +274,10 @@
                                 <!-- 由 app.js 动态渲染 -->
                             </tbody>
                         </table>
+                    </div>
+                    <!-- 移动端卡片流视图 -->
+                    <div class="mobile-only mobile-cards-list" id="records-cards">
+                        <!-- 由 app.js 动态渲染 -->
                     </div>
                 </section>
 

@@ -9,18 +9,17 @@
     --text-muted: #64748b;
     --text-light: #94a3b8;
     
-    --primary: #0f172a; /* 极简黑白色调作为主色 */
+    --primary: #0f172a;
     --primary-hover: #334155;
     --primary-light: #f1f5f9;
     
     --danger: #dc2626;
     --danger-hover: #b91c1c;
     
-    /* 运营商标志色 */
-    --color-ct: #2563eb; /* 电信蓝 */
-    --color-cu: #ea580c; /* 联通橙 */
-    --color-cm: #16a34a; /* 移动绿 */
-    --color-def: #64748b; /* 默认灰 */
+    --color-ct: #2563eb;
+    --color-cu: #ea580c;
+    --color-cm: #16a34a;
+    --color-def: #64748b;
     
     --font-sans: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -48,14 +47,12 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-/* 核心布局 */
 .app-container {
     display: flex;
     width: 100vw;
     height: 100vh;
 }
 
-/* 侧边栏 */
 .sidebar {
     width: 240px;
     background-color: var(--bg-sidebar);
@@ -158,7 +155,6 @@ body {
     color: var(--text-muted);
 }
 
-/* 主内容区 */
 .main-content {
     flex-grow: 1;
     display: flex;
@@ -200,7 +196,6 @@ body {
     margin: 0 auto;
 }
 
-/* 标签页管理 */
 .tab-pane {
     display: none;
 }
@@ -209,7 +204,6 @@ body {
     display: block;
 }
 
-/* 卡片布局 */
 .card-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -267,7 +261,6 @@ body {
     color: var(--text-light);
 }
 
-/* 常规区块容器 */
 .section-container {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -287,7 +280,6 @@ body {
     line-height: 1.5;
 }
 
-/* 三网流量条 */
 .traffic-bars {
     display: flex;
     flex-direction: column;
@@ -342,7 +334,6 @@ body {
 .progress-fill.cm-fill { background-color: var(--color-cm); }
 .progress-fill.def-fill { background-color: var(--color-def); }
 
-/* 解析记录样式 */
 .table-actions {
     display: flex;
     justify-content: space-between;
@@ -403,7 +394,6 @@ body {
     background-color: #fafafa;
 }
 
-/* 用于合并行的线条样式优化 */
 .record-group-start td {
     border-bottom: 1px dashed var(--border-color);
 }
@@ -420,7 +410,6 @@ body {
     font-family: var(--font-mono);
 }
 
-/* 状态点 */
 .isp-dot {
     display: inline-block;
     width: 6px;
@@ -449,7 +438,6 @@ body {
     border: 1px solid var(--border-color);
 }
 
-/* 按钮样式 */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -503,7 +491,6 @@ body {
     color: var(--danger-hover);
 }
 
-/* DDNS 标题排版 */
 .ddns-header {
     display: flex;
     justify-content: space-between;
@@ -515,7 +502,6 @@ body {
     margin-top: 24px;
 }
 
-/* 代码块 */
 .code-block {
     background-color: var(--primary-light);
     border: 1px solid var(--border-color);
@@ -532,7 +518,6 @@ body {
     white-space: pre;
 }
 
-/* 日志显示窗 */
 .log-actions {
     display: flex;
     justify-content: space-between;
@@ -564,7 +549,6 @@ body {
 .log-row.query { color: #38bdf8; }
 .log-row.api { color: #4ade80; }
 
-/* 模态框样式 */
 .modal-overlay {
     position: fixed;
     top: 0;
@@ -748,6 +732,47 @@ label {
     display: inline-block;
 }
 
+/* Switch toggle */
+.switch-container {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 24px;
+}
+.switch-container input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: var(--border-hover);
+    transition: .3s;
+    border-radius: 24px;
+}
+.switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+input:checked + .switch-slider {
+    background-color: #38bdf8;
+}
+input:checked + .switch-slider:before {
+    transform: translateX(24px);
+}
+
 /* 遮罩层默认样式（非激活状态隐藏） */
 .sidebar-overlay {
     display: none;
@@ -867,14 +892,6 @@ label {
         width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-        margin-bottom: 16px;
-        box-shadow: inset -10px 0 10px -10px rgba(0,0,0,0.1); /* 增加右侧阴影提示可滑动 */
-    }
-
-    .table-container .data-table th,
-    .table-container .data-table td {
-        white-space: nowrap; /* 强制表格内容不换行，依赖横向滚动 */
-        padding: 12px 16px;
     }
 
     /* 教程手风琴自适应 */
@@ -958,4 +975,259 @@ label {
 }
 .cascader-item.active.has-children::after {
     color: var(--primary-color);
+}
+
+/* ==========================================================================
+   全新重构：IP 胶囊芯片 (Capsule Tag Chips) 与展开折叠交互
+   ========================================================================== */
+.ip-chips-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    min-height: 28px;
+}
+
+.ip-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 500;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #1e293b;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.ip-chip:hover {
+    background: #e2e8f0;
+    border-color: #cbd5e1;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.ip-chip:active {
+    transform: translateY(0);
+}
+
+.ip-chip .chip-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+    flex-shrink: 0;
+}
+
+.ip-chip.unhealthy {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #dc2626;
+}
+
+.ip-chip.unhealthy .chip-dot {
+    background-color: #ef4444;
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
+
+.ip-chip.unhealthy .ip-text {
+    text-decoration: line-through;
+}
+
+.ip-chip .badge-dead {
+    font-size: 10px;
+    background: #fee2e2;
+    color: #ef4444;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 700;
+    line-height: 1;
+}
+
+/* 隐藏超出限制的 IP 芯片 */
+.ip-chips-container .ip-chip-hidden {
+    display: none !important;
+}
+
+/* 展开状态下展示所有芯片 */
+.ip-chips-container.expanded .ip-chip-hidden {
+    display: inline-flex !important;
+}
+
+/* 更多节点展开/收起按钮 */
+.ip-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px dashed #cbd5e1;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.ip-toggle-btn:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+    border-color: #94a3b8;
+    border-style: solid;
+}
+
+/* 悬停一键复制微提示 Toast */
+.copy-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: rgba(15, 23, 42, 0.9);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+    z-index: 99999;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.copy-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================================================
+   桌面端 vs 移动端视图分流与卡片流系统
+   ========================================================================== */
+.mobile-only {
+    display: none !important;
+}
+
+.desktop-only {
+    display: block !important;
+}
+
+@media (max-width: 768px) {
+    .mobile-only {
+        display: block !important;
+    }
+    
+    .desktop-only {
+        display: none !important;
+    }
+
+    /* 移动端卡片流 */
+    .mobile-cards-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+    }
+
+    .mobile-record-card {
+        background: #ffffff;
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-md);
+        padding: 14px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        transition: box-shadow 0.2s ease;
+    }
+
+    .mobile-record-card:active {
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+    }
+
+    .mobile-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+        margin-bottom: 10px;
+    }
+
+    .mobile-card-title {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+
+    .mobile-subdomain {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text-main);
+    }
+
+    .mobile-domain {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+    }
+
+    .mobile-card-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .mobile-ttl {
+        font-size: 0.75rem;
+        color: var(--text-light);
+        font-family: var(--font-mono);
+        background: var(--bg-main);
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+
+    .mobile-lines-container {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .mobile-line-row {
+        background: var(--bg-main);
+        padding: 8px 10px;
+        border-radius: 6px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+    }
+
+    .mobile-line-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 6px;
+    }
+
+    .mobile-line-isp {
+        display: flex;
+        align-items: center;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: var(--text-main);
+    }
+
+    .mobile-line-ops {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .mobile-line-ops .btn {
+        padding: 3px 8px;
+        font-size: 0.75rem;
+        min-height: 26px;
+    }
 }

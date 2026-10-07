@@ -536,13 +536,17 @@ async function loadRecords() {
     }
 }
 
-// 渲染解析表格
-function renderRecordsTable(data) {
+// 渲染解析表格（同时适配桌面端大表与移动端卡片流）
+function renderRecordsTable(data, filterKeyword = '') {
     const tbody = document.getElementById('records-list');
-    tbody.innerHTML = '';
+    const cardsContainer = document.getElementById('records-cards');
+    if (tbody) tbody.innerHTML = '';
+    if (cardsContainer) cardsContainer.innerHTML = '';
 
     if (!data.domains || Object.keys(data.domains).length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-light)">暂无解析记录，请点击左上角添加</td></tr>';
+        const emptyHtml = '<div style="text-align: center; color: var(--text-light); padding: 32px 0;">暂无解析记录，请点击上方添加</div>';
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-light); padding: 24px;">暂无解析记录，请点击上方添加</td></tr>`;
+        if (cardsContainer) cardsContainer.innerHTML = emptyHtml;
         return;
     }
 
@@ -553,89 +557,251 @@ function renderRecordsTable(data) {
         'def': '默认 (DEF)'
     };
 
+    const unhealthyMap = data.unhealthy_ips || {};
+    const kw = (filterKeyword || '').trim().toLowerCase();
+    let totalMatchedGroups = 0;
+
     for (const [domainName, domainObj] of Object.entries(data.domains)) {
         if (!domainObj.records) continue;
 
         for (const [key, records] of Object.entries(domainObj.records)) {
             if (!records || records.length === 0) continue;
 
-            // records 数组包含同一个子域名、同类型下的多条线路解析
-            records.forEach((rec, index) => {
-                const tr = document.createElement('tr');
-                
-                // 第一行需要合并显示子域名、主域名、类型
-                if (index === 0) {
-                    const rowSpan = records.length;
+            // 搜索过滤检查
+            if (kw) {
+                const sub = (records[0].subdomain || '').toLowerCase();
+                const dom = domainName.toLowerCase();
+                const allIps = records.flatMap(r => r.values || []).join(' ').toLowerCase();
+                const isMatch = sub.includes(kw) || dom.includes(kw) || allIps.includes(kw);
+                if (!isMatch) continue;
+            }
+
+            totalMatchedGroups++;
+
+            // ==========================================
+            // 1. 桌面端表格渲染 (Desktop Table)
+            // ==========================================
+            if (tbody) {
+                records.forEach((rec, index) => {
+                    const tr = document.createElement('tr');
                     
-                    const tdSub = document.createElement('td');
-                    tdSub.rowSpan = rowSpan;
-                    tdSub.className = 'bold font-mono';
-                    tdSub.textContent = rec.subdomain;
-                    tr.appendChild(tdSub);
+                    // 第一行合并显示子域名、主域名、类型
+                    if (index === 0) {
+                        const rowSpan = records.length;
+                        
+                        const tdSub = document.createElement('td');
+                        tdSub.rowSpan = rowSpan;
+                        tdSub.className = 'bold font-mono';
+                        tdSub.textContent = rec.subdomain;
+                        tr.appendChild(tdSub);
 
-                    const tdDom = document.createElement('td');
-                    tdDom.rowSpan = rowSpan;
-                    tdDom.className = 'font-mono';
-                    tdDom.textContent = domainName;
-                    tr.appendChild(tdDom);
+                        const tdDom = document.createElement('td');
+                        tdDom.rowSpan = rowSpan;
+                        tdDom.className = 'font-mono';
+                        tdDom.style.color = 'var(--text-muted)';
+                        tdDom.textContent = domainName;
+                        tr.appendChild(tdDom);
 
-                    const tdType = document.createElement('td');
-                    tdType.rowSpan = rowSpan;
-                    tdType.innerHTML = `<span class="badge badge-type">${rec.type}</span>`;
-                    tr.appendChild(tdType);
-                }
+                        const tdType = document.createElement('td');
+                        tdType.rowSpan = rowSpan;
+                        tdType.innerHTML = `<span class="badge badge-type">${rec.type}</span>`;
+                        tr.appendChild(tdType);
+                    }
 
-                // 线路
-                const tdISP = document.createElement('td');
-                tdISP.innerHTML = `<span class="isp-dot ${rec.isp}"></span>${ispNameMap[rec.isp] || rec.isp}`;
-                tr.appendChild(tdISP);
+                    // 线路
+                    const tdISP = document.createElement('td');
+                    tdISP.innerHTML = `<span class="isp-dot ${rec.isp}"></span>${ispNameMap[rec.isp] || rec.isp}`;
+                    tr.appendChild(tdISP);
 
-                // 记录值 (合并为逗号分隔字符串展示)
-                const tdVal = document.createElement('td');
-                tdVal.className = 'font-mono';
-                const unhealthyMap = data.unhealthy_ips || {};
-                if (rec.values && rec.values.length > 0) {
-                    tdVal.innerHTML = rec.values.map(v => {
-                        const isDead = unhealthyMap[v];
-                        if (isDead) {
-                            return `<span style="color:#ef4444;text-decoration:line-through;font-weight:600;" title="[宕机] 节点探测超时，已自动剔除">${v}</span> <span style="font-size:11px;background:#fee2e2;color:#ef4444;padding:1px 4px;border-radius:4px;font-weight:bold;">宕机</span>`;
-                        } else {
-                            return `<span style="color:#10b981;font-weight:500;" title="[健康] 节点连通正常">${v}</span>`;
-                        }
-                    }).join(', ');
-                } else {
-                    tdVal.textContent = '';
-                }
-                tr.appendChild(tdVal);
+                    // 记录值 (全新 IP 胶囊芯片与智能折叠)
+                    const tdVal = document.createElement('td');
+                    tdVal.innerHTML = renderIPChips(rec.values, unhealthyMap, 3);
+                    tr.appendChild(tdVal);
 
-                // TTL
-                const tdTTL = document.createElement('td');
-                tdTTL.className = 'font-mono';
-                tdTTL.textContent = rec.ttl;
-                tr.appendChild(tdTTL);
+                    // TTL
+                    const tdTTL = document.createElement('td');
+                    tdTTL.className = 'font-mono';
+                    tdTTL.textContent = rec.ttl;
+                    tr.appendChild(tdTTL);
 
-                // 操作
-                const tdOps = document.createElement('td');
-                const valStr = rec.values ? rec.values.join(', ') : '';
-                
-                tdOps.innerHTML = `
-                    <button class="btn btn-text" onclick="editRecord('${rec.subdomain}', '${domainName}', '${rec.type}', '${rec.isp}', '${valStr}', ${rec.ttl})">编辑</button>
-                    <button class="btn btn-text danger" onclick="deleteRecord('${rec.subdomain}', '${domainName}', '${rec.type}', '${rec.isp}')">删除</button>
+                    // 操作
+                    const tdOps = document.createElement('td');
+                    const valStr = rec.values ? rec.values.join(', ') : '';
+                    tdOps.innerHTML = `
+                        <button class="btn btn-text" onclick="editRecord('${rec.subdomain}', '${domainName}', '${rec.type}', '${rec.isp}', '${valStr}', ${rec.ttl})">编辑</button>
+                        <button class="btn btn-text danger" onclick="deleteRecord('${rec.subdomain}', '${domainName}', '${rec.type}', '${rec.isp}')">删除</button>
+                    `;
+                    tr.appendChild(tdOps);
+
+                    if (index === 0) tr.className = 'record-group-start';
+                    if (index === records.length - 1) tr.className = 'record-group-end';
+
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // ==========================================
+            // 2. 移动端卡片流渲染 (Mobile Cards)
+            // ==========================================
+            if (cardsContainer) {
+                const firstRec = records[0];
+                const card = document.createElement('div');
+                card.className = 'mobile-record-card';
+
+                let linesHtml = '';
+                records.forEach(rec => {
+                    const valStr = rec.values ? rec.values.join(', ') : '';
+                    linesHtml += `
+                        <div class="mobile-line-row">
+                            <div class="mobile-line-top">
+                                <div class="mobile-line-isp">
+                                    <span class="isp-dot ${rec.isp}"></span>
+                                    <span>${ispNameMap[rec.isp] || rec.isp}</span>
+                                </div>
+                                <div class="mobile-line-ops">
+                                    <button class="btn btn-outline" style="padding: 2px 8px; font-size: 0.75rem;" onclick="editRecord('${rec.subdomain}', '${domainName}', '${rec.type}', '${rec.isp}', '${valStr}', ${rec.ttl})">编辑</button>
+                                    <button class="btn btn-text danger" style="padding: 2px 6px; font-size: 0.75rem;" onclick="deleteRecord('${rec.subdomain}', '${domainName}', '${rec.type}', '${rec.isp}')">删除</button>
+                                </div>
+                            </div>
+                            <div style="margin-top: 6px;">
+                                ${renderIPChips(rec.values, unhealthyMap, 3)}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <div class="mobile-card-header">
+                        <div class="mobile-card-title">
+                            <span class="badge badge-type">${firstRec.type}</span>
+                            <span class="mobile-subdomain font-mono">${escapeHTML(firstRec.subdomain)}</span>
+                            <span class="mobile-domain font-mono">.${escapeHTML(domainName)}</span>
+                        </div>
+                        <div class="mobile-card-meta">
+                            <span class="mobile-ttl">TTL: ${firstRec.ttl}s</span>
+                        </div>
+                    </div>
+                    <div class="mobile-lines-container">
+                        ${linesHtml}
+                    </div>
                 `;
-                tr.appendChild(tdOps);
 
-                // 设置线条类别优化
-                if (index === 0) {
-                    tr.className = 'record-group-start';
-                }
-                if (index === records.length - 1) {
-                    tr.className = 'record-group-end';
-                }
-
-                tbody.appendChild(tr);
-            });
+                cardsContainer.appendChild(card);
+            }
         }
     }
+
+    if (kw && totalMatchedGroups === 0) {
+        const noMatch = `<div style="text-align: center; color: var(--text-light); padding: 32px 0;">未搜索到匹配项 "${escapeHTML(kw)}"</div>`;
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-light); padding: 24px;">未搜索到匹配项 "${escapeHTML(kw)}"</td></tr>`;
+        if (cardsContainer) cardsContainer.innerHTML = noMatch;
+    }
+}
+
+// 渲染 IP 胶囊芯片与智能超限折叠
+function renderIPChips(values, unhealthyMap, maxVisible = 3) {
+    if (!values || values.length === 0) {
+        return '<span style="color: var(--text-light); font-size: 0.8rem;">(未配置)</span>';
+    }
+
+    const containerId = 'chip_grp_' + Math.random().toString(36).substring(2, 9);
+    const needCollapse = values.length > maxVisible;
+
+    let html = `<div class="ip-chips-container" id="${containerId}">`;
+    values.forEach((v, idx) => {
+        const isDead = unhealthyMap && unhealthyMap[v];
+        const isHidden = needCollapse && idx >= maxVisible;
+        const hiddenClass = isHidden ? 'ip-chip-hidden' : '';
+        const statusClass = isDead ? 'unhealthy' : 'healthy';
+        const titleTip = isDead ? '【宕机】心跳探测超时，已自动剔除' : '【健康】连通正常，点击复制 IP';
+
+        html += `
+            <div class="ip-chip ${statusClass} ${hiddenClass}" title="${titleTip}" onclick="copyIPToClipboard('${escapeHTML(v)}')">
+                <span class="chip-dot"></span>
+                <span class="ip-text font-mono">${escapeHTML(v)}</span>
+                ${isDead ? '<span class="badge-dead">宕机</span>' : ''}
+            </div>
+        `;
+    });
+
+    if (needCollapse) {
+        const remaining = values.length - maxVisible;
+        html += `
+            <button class="ip-toggle-btn" onclick="toggleIPChips('${containerId}', this, ${remaining})">
+                +${remaining} 更多 ▾
+            </button>
+        `;
+    }
+
+    html += `</div>`;
+    return html;
+}
+
+// 展开/折叠芯片
+function toggleIPChips(containerId, btn, remaining) {
+    const el = document.getElementById(containerId);
+    if (!el) return;
+    const isExpanded = el.classList.toggle('expanded');
+    if (isExpanded) {
+        btn.textContent = '收起 ▴';
+    } else {
+        btn.textContent = `+${remaining} 更多 ▾`;
+    }
+}
+
+// 一键复制 IP 与 Toast 提示
+function copyIPToClipboard(text) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+            showCopyToast(`已复制 IP: ${text}`);
+        }).catch(() => {
+            fallbackCopy(text);
+        });
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try {
+        document.execCommand('copy');
+        showCopyToast(`已复制 IP: ${text}`);
+    } catch (e) {
+        showCopyToast(`复制失败，请手动选择`);
+    }
+    document.body.removeChild(ta);
+}
+
+function showCopyToast(msg) {
+    let toast = document.getElementById('copy-toast');
+    if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'copy-toast';
+        toast.className = 'copy-toast';
+        document.body.appendChild(toast);
+    }
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(window.__copyToastTimer);
+    window.__copyToastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+    }, 1800);
+}
+
+// 实时搜索过滤
+function filterRecords(keyword) {
+    if (window.__filterTimer) clearTimeout(window.__filterTimer);
+    window.__filterTimer = setTimeout(() => {
+        renderRecordsTable(globalData, keyword);
+    }, 150);
 }
 
 // 渲染 DDNS 表格 (独立向 API 获取最新的可靠数据)
